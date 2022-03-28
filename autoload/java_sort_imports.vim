@@ -19,14 +19,14 @@ function! s:FilterImportStatementsFromBuffer() abort
 	let l:imports = []
 	let l:idx = 1
 	while l:idx > 0
-		let l:idx = s:FindLineMatchingPattern(l:idx, '^import\s.\+;$')
+		let l:idx = s:FindLineMatchingPattern(l:idx, '^\s*import\s.\+;\s*$')
 		if l:idx
-			call add(l:imports, getline(l:idx))
+			call add(l:imports, trim(getline(l:idx)))
 			call deletebufline('%', l:idx)
 		endif
 	endwhile
 
-	return l:imports
+	return uniq(l:imports)
 endfunction
 
 " Starting from line number `lnum`, remove all lines matching the pattern
@@ -49,11 +49,12 @@ function! s:TruncateToPattern(lnum, trunc_patt, stop_patt) abort
 	return 0
 endfunction
 
-" Create and return sorted list of import statements.
+" Create and return list of import statements.
 " Each entry in `imports` must have the following format:
 " 	^import\s(static\s)?.+
 "
-" Returns the group of statements.
+" Returns the group of statements. The order of the imports returned is
+" undefined.
 function! s:CreateImportStatementGroup(imports, packages) abort
 	let l:grp = []
 
@@ -80,7 +81,7 @@ function! s:CreateImportStatementGroup(imports, packages) abort
 		endfor
 	endfor
 
-	return sort(l:grp)
+	return l:grp
 endfunction
 
 " Flatten the groups into a single list. If `g:java_import_space_group` is
@@ -137,6 +138,11 @@ function! s:SortImportStatements(imports) abort
 	" any statements that don't fit into any group are added to the end
 	call add(l:import_stmt_grps, flatten(l:import_stmts))
 
+	" sort groups
+	for group in l:import_stmt_grps
+		call sort(group)
+	endfor
+
 	return s:FlattenGroups(l:import_stmt_grps)
 endfunction
 
@@ -165,7 +171,7 @@ function! java_sort_imports#JavaSortImports() abort
 
 	" look for package statement and truncate empty lines between package
 	" statement and first bit of text
-	let l:pkg_stmt_lnum = s:FindLineMatchingPattern(l:idx, '^package\s.\+;$')
+	let l:pkg_stmt_lnum = s:FindLineMatchingPattern(l:idx, '^\s*package\s.\+;\s*$')
 	if l:pkg_stmt_lnum > 0
 		call s:TruncateToPattern(l:pkg_stmt_lnum + 1, '^$', '^.')
 		let l:idx = l:pkg_stmt_lnum
