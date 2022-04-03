@@ -16,5 +16,14 @@ if !exists('g:java_import_space_group')
 	let g:java_import_space_group = 1
 endif
 
-command! JavaSortImports call java_sort_imports#JavaSortImports()
+" By default, don't group imports into wildcard.
+" Allowed values:
+" - (< 0): remove any wildcard imports, imports must be fixed by user
+" - (= 0): keep wildcard imports, don't merge imports in same package
+" - (> 0): merge imports in same package into wildcard import
+if !exists('g:java_import_wildcard_count')
+	let g:java_import_wildcard_count = 0
+endif
+
+command! JavaSortImports call sort#JavaSortImports()
 
