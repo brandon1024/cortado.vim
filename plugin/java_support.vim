@@ -1,7 +1,7 @@
-if exists('g:loaded_java_sort_imports_plugin')
+if exists('g:loaded_java_support_plugin')
 	finish
 endif
-let g:loaded_java_sort_imports_plugin = 1
+let g:loaded_java_support_plugin = 1
 
 " The default order for java imports.
 if !exists('g:java_import_order')
@@ -26,4 +26,5 @@ if !exists('g:java_import_wildcard_count')
 endif
 
 command! JavaSortImports call sort#JavaSortImports()
+command! -nargs=? JavaImportKeyword call import#JavaImportKeyword(<f-args>)
 

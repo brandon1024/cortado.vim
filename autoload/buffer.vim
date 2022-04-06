@@ -1,9 +1,9 @@
 " Starting at line number `lnum`, find the first line matching pattern `patt`,
 " returning the line number. Return 0 if no such line could be found.
-function! buffer#FindLineMatchingPattern(lnum, patt) abort
+function! buffer#FindLineMatchingPattern(lnum, patt, buf = '%') abort
 	let l:idx = a:lnum
 	while l:idx <= line('$')
-		if match(getline(l:idx), a:patt) >= 0
+		if match(getbufline(a:buf, l:idx), a:patt) >= 0
 			return l:idx
 		endif
 

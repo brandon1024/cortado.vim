@@ -1,0 +1,286 @@
+*java-support.txt*                                 Easier editing of Java files.
+
+Author:  Brandon Richardson <brandon1024.br@gmail.com>
+License: MIT license
+
+================================================================================
+CONTENTS                                                 *java-support-contents*
+
+INTRODUCTION                                         |java-support-introduction|
+  FEATURES                                               |java-support-features|
+USAGE                                                       |java-support-usage|
+  COMMANDS                                               |java-support-commands|
+OPTIONS                                                   |java-support-options|
+  SORT OPTIONS                                       |java-support-sort-options|
+  IMPORT OPTIONS                                   |java-support-import-options|
+MAPPINGS                                                 |java-support-mappings|
+  CREATING CUSTOM MAPPINGS               |java-support-creating-custom-mappings|
+EXTRA                                                       |java-support-extra|
+  LIMITATIONS                                         |java-support-limitations|
+  UNIVERSAL CTAGS                                 |java-support-universal-ctags|
+  REPORTING ISSUES                               |java-support-reporting-issues|
+
+
+================================================================================
+INTRODUCTION                                         *java-support-introduction*
+
+Java is a notoriously difficult language to work with in Vim, likely because
+fantastic purpose-built development tools (like IntelliJ and Gradle) already
+exist, making Vim seem like an obsolete tool. Vim is still extremely powerful
+for text editing and development tasks, especially with a bit of practice, but
+it's missing a few niceties that come standard in a full-fledged integrated
+development environment.
+
+java-support is a Vim plugin to make working on Java projects with Vim a
+bit easier. The plugin mainly helps you with imports (auto import,
+reformatting, optimizing), but more features are planned.
+
+The plugin itself does not have any external dependencies, and aims to leverage
+native capabilities of Vim. The plugin is also very lightweight compared to
+other solutions out there. You don't need to setup a complicated language
+server and install a million plugins to get it working--it just works out of
+the box.
+
+java-support is unobtrusive. To avoid overriding built-in or user-defined
+mappings, the plugin doesn't create any key mappings. You are left to create
+mappings that fit your workflow.
+
+--------------------------------------------------------------------------------
+FEATURES                                                 *java-support-features*
+
+Sort/Reformat Import Statements~
+	Automatically sort your import statements. Group import statements by
+	package, and configure the order of individual import groups.
+
+Optimize/Merge Import Statements~
+	Remove duplicate or unecessary import statements. Automatically merge
+	same-package imports into a single wildcard import (when enabled).
+
+Class/Enum Auto Import~
+	Import project classes and enums by name with the help of tag files. If
+	multiple classes/enums are found, prompts the user to select which to
+	import.
+
+================================================================================
+USAGE                                                       |java-support-usage|
+
+To cleanup import statements:
+>
+	:JavaSortImports
+<
+
+To import a class or enum with a specific name:
+>
+	:JavaImportKeyword MyClass
+<
+
+To import a class or enum with a name under the cursor:
+>
+	:JavaImportKeyword
+<
+
+--------------------------------------------------------------------------------
+COMMANDS                                                 *java-support-commands*
+
+                                                              *:JavaSortImports*
+:JavaSortImports
+	Clean up import statements in the current buffer. Import statements are
+	removed, optimized, sorted, and then written to the buffer just below the
+	package statement (if exists).
+
+                                                            *:JavaImportKeyword*
+:JavaImportKeyword [name]
+	Search tag files for classes and enums with a specific [name]. If [name] is
+	given, searches for classes with that name. If [name] is omitted, searches
+	for classes with a name under the cursor (<cword>).
+
+	If there are multiple results, a popup menu is shown allowing the user to
+	select which class to import.
+
+================================================================================
+OPTIONS                                                   *java-support-options*
+
+--------------------------------------------------------------------------------
+SORT OPTIONS                                         *java-support-sort-options*
+
+                                                         *'g:java_import_order'*
+A list of dictionaries used to configure how import statements are grouped.
+
+If "static" is true, only static imports are included in the group. Otherwise,
+only non-static imports are included in the group.
+
+"packages" is a list of strings matching the beginning of the imported package
+path. If empty, all remaining imports are grouped together.
+
+Default:
+>
+	let g:java_import_order = [
+		\ { 'static': 1, 'packages': [] },
+		\ { 'static': 0, 'packages': ['java.', 'javax.'] },
+		\ { 'static': 0, 'packages': [] }]
+<
+
+                                                   *'g:java_import_space_group'*
+Insert an empty line between import groups.
+
+Default:
+>
+	let g:java_import_space_group = 1
+<
+
+                                                *'g:java_import_wildcard_count'*
+Configure whether to merge import statements into a single wildcard import. The
+value is a number, where:
+- (< 0) will remove wildcard import statements altogether (may require
+manually adding new import statements),
+- (= 0) will keep existing wildcard imports and merge them, but otherwise won't
+merge imports,
+- (> 0) will merge imports in the same package into a single wildcard import
+when the number of imports exceeds the configured value.
+
+The following contrived example demonstrates this behaviour.
+>
+	// original
+	import java.io.IOException;
+	import java.io.SSLException;
+	import java.io.StringWriter;
+	import java.io.ObjectInputFilter.Status;
+	import java.util.List;
+	import java.util.Collections;
+	import java.util.*;
+
+	// let g:java_import_wildcard_count = -1
+	import java.io.IOException;
+	import java.io.ObjectInputFilter.Status;
+	import java.io.SSLException;
+	import java.io.StringWriter;
+	import java.util.Collections;
+	import java.util.List;
+
+	// let g:java_import_wildcard_count = 0
+	import java.io.IOException;
+	import java.io.ObjectInputFilter.Status;
+	import java.io.SSLException;
+	import java.io.StringWriter;
+	import java.util.*;
+	import java.util.Collections;
+	import java.util.List;
+
+	// let g:java_import_wildcard_count = 3
+	import java.io.*;
+	import java.io.ObjectInputFilter.Status;
+	import java.util.Collections;
+	import java.util.List;
+<
+
+Default:
+>
+	let g:java_import_wildcard_count = 0
+<
+
+--------------------------------------------------------------------------------
+IMPORT OPTIONS                                     *java-support-import-options*
+
+There are no import options at this time.
+
+================================================================================
+MAPPINGS                                                 *java-support-mappings*
+
+--------------------------------------------------------------------------------
+CREATING CUSTOM MAPPINGS                 *java-support-creating-custom-mappings*
+
+Key mappings are not created by default, but you can add them if you wish. Here
+are some mappings that I use:
+>
+	nnoremap <silent> <leader>o :JavaSortImports<CR>
+	nnoremap <silent> <leader>i :JavaImportKeyword<CR>
+<
+
+================================================================================
+EXTRA                                                       *java-support-extra*
+
+--------------------------------------------------------------------------------
+LIMITATIONS                                           *java-support-limitations*
+
+Illegal Java Syntax~
+	If you're editing a particularly bad Java file--one that doesn't adhere to
+	the Java specification--the plugin might not behave correctly.
+
+Compound Import Statements~
+	If you have multiple import statements on the same line (as shown below),
+	the plugin will only read the first import and will discard any remaining
+	on that line. Split your import statements (one per line) and rerun the
+	tool.
+
+Classes in Base Package~
+	This plugin relies on package statements to determine the fully-qualified
+	classname. If classes exist in the base package (and don't have an import
+	statement), the plugin won't suggest it.
+
+Nested Classes and Enums~
+	The plugin currently does not recommend imports for nested classes. This
+	will be addressed in a later version.
+
+Dependence on ctags~
+	This plugin relies heavily on tag files. If you aren't using ctags (or
+	you're using a particularly dumb tag file generator), not all features will
+	work. If you aren't using |universal-ctags|, you should.. It's amazing.
+	See |java-support-universal-ctags|.
+
+--------------------------------------------------------------------------------
+UNIVERSAL CTAGS                                   *java-support-universal-ctags*
+
+This plugin uses tag files to locate classes and build fully-qualified class
+names. Without it, you won't be able to import classes automatically. If you
+haven't worked with *universal-ctags* before, it'll change your life. It's also
+pretty easy to use. I'll give a bit of information in this section, but you
+should definitely read through the ctags documentation for a more comprehensive
+overview.
+
+A tag file is a sorted list of keywords with information on their location. If
+you take a peek at a tag file, you'll see that each line is a tab-delimited
+list of things:
+>
+	{tagname}<Tab>{tagfile}<Tab>{tagaddress}
+<
+
+This is the simplest format. For modern tag file generators (like
+universal-ctags), each line will include extra metadata, like the kind of
+keyword (class, method, etc) or any other useful bit of information. You can
+read more about the format by reading the tags(5) manual.
+
+To generate a tag file for your project, just run something like this:
+>
+	$ ctags -R .
+<
+
+This will traverse your project recursively, reading your files and generating
+a tags file (tags) in the current directory. There's a lot more you can do with
+it, read ctags(1) if you're interested.
+
+What about libraries? If your project uses thirdparty libraries, it's difficult
+to generate tag files that include keywords from those files. The way that Java
+libraries are distributed makes it difficult to integrate with tools like
+ctags. Without some special handling, you'll only be able to use tag files for
+files in your project.
+
+I built a project called *gtags* that can be used for generating tag files for
+project libraries. It's a Gradle plugin that reads your dependencies and
+decompiles them so that you can run ctags on the decompiled source files. The
+plugin isn't really used by anyone so it's a bit clunky to use, but I'll
+mention it here anyway.
+
+https://github.com/brandon1024/gtags
+
+--------------------------------------------------------------------------------
+REPORTING ISSUES                                 *java-support-reporting-issues*
+
+If you run into issues, please file an issue on our github page! Be sure to
+include lots of detail (a minimal reproducible example is required). I also
+accept patches and contributions of any form! If you like the plugin, star the
+repo :-)
+
+https://github.com/brandon1024/java-support.vim
+
+=============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:
