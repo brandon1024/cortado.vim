@@ -39,7 +39,7 @@ function! s:FlattenGroups(groups) abort
 	call filter(a:groups, { idx, val -> len(val) })
 
 	if g:java_import_space_group
-		for idx in range(len(a:groups) - 1)
+		for idx in range(len(a:groups[0:-2]))
 			call add(a:groups[idx], '')
 		endfor
 	endif
@@ -95,22 +95,14 @@ function! s:SortImportStatements(imports) abort
 	return s:FlattenGroups(l:import_stmt_grps)
 endfunction
 
-" Sort import statements in the current buffer.
-function! sort#JavaSortImports() abort
-	" ensure this is a java file
-	if &filetype != 'java'
-		echohl WarningMsg |
-			\ echo 'cannot sort imports: unexpected filetype "' . &filetype . '"' |
-			\ echohl None
-		return
-	endif
-
-	let l:trees = import_tree#Build()
-
+" Sort and write the given import trees `trees` to the current buffer.
+" Assumes that all import statements have already been removed from the
+" buffer.
+function! sort#JavaSortImportsTrees(trees) abort
 	" sort import statements according to configuration
 	let l:imports = s:SortImportStatements(flatten([
-		\ import_tree#Flatten(l:trees['s'], [], 'import static ', ';'),
-		\ import_tree#Flatten(l:trees['ns'], [], 'import ', ';')
+		\ import_tree#Flatten(a:trees['s'], [], 'import static ', ';'),
+		\ import_tree#Flatten(a:trees['ns'], [], 'import ', ';')
 	\ ]))
 
 	" truncate leading empty lines
@@ -125,5 +117,18 @@ function! sort#JavaSortImports() abort
 	else
 		call buffer#WriteLines(0, [l:imports, ''])
 	endif
+endfunction
+
+" Sort import statements in the current buffer.
+function! sort#JavaSortImports() abort
+	" ensure this is a java file
+	if &filetype != 'java'
+		echohl WarningMsg |
+			\ echo 'cannot sort imports: unexpected filetype "' . &filetype . '"' |
+			\ echohl None
+		return
+	endif
+
+	call sort#JavaSortImportsTrees(import_tree#Build())
 endfunction
 

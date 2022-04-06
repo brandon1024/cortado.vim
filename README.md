@@ -1,5 +1,6 @@
-# java-sort-imports.vim
-A Vim plugin that rearranges import statements in Java files.
+# java-support.vim
+A Vim plugin for easier editing of Java files. Rearrange, optimize, and
+reformat import statements. Import classes easily with the help of tag files.
 
 ## Installation
 This plugin has no external dependencies, so you can easily install with your
@@ -7,26 +8,31 @@ favourite plugin manager.
 
 With [vim-plug](https://github.com/junegunn/vim-plug):
 ```vim
-Plug 'brandon1024/java-sort-imports.vim'
+Plug 'brandon1024/java-support.vim'
 ```
 
 ## Usage
 To sort import statements in the current buffer:
-```
+```vim
 :JavaSortImports
 ```
+
+To import a class under the current keyword (or a specific class):
+```vim
+:JavaImportKeyword
+:JavaImportKeyword MyClass
+```
+
+The class import functionality relies on the existence of a tags file. The tags
+file can be generated with a tool like
+[universal-ctags](https://github.com/universal-ctags/ctags). The ctags
+generator must smart enough to read Java files correctly (including metadata
+like whether it's a class or enum).
 
 You can add a mapping to make your life a bit easier:
 ```vim
 nnoremap <silent> <leader>o :JavaSortImports<CR>
-```
-
-If you're feeling bold, automatically sort imports before writing the buffer:
-```vim
-augroup java_sort_imports
-	autocmd!
-	autocmd BufWritePre * if &ft == 'java' | call s:JavaSortImports() | endif
-augroup END
+nnoremap <silent> <leader>i :JavaImportKeyword<CR>
 ```
 
 ## Configuration
@@ -48,9 +54,9 @@ let g:java_import_order = [
 ```
 
 ### `g:java_import_space_group`
-Insert an empty line between import groups.
+insert an empty line between import groups.
 
-Default:
+default:
 ```vim
 let g:java_import_space_group = 1
 ```

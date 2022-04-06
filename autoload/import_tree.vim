@@ -1,3 +1,9 @@
+" Split a fully qualified class name `fq_classname` into its components.
+" Returns a list of components.
+function! s:SplitQualifiedClassName(fq_classname) abort
+	return split(trim(a:fq_classname), '\.')
+endfunction
+
 " Split an import statement into individual tokens. The result is a dictionary
 " with the following structure:
 " 	{ 'static': bool, 'components': List }
@@ -20,17 +26,10 @@ function! s:TokenizeStatement(stmt) abort
 		let l:components = l:components[1:-1]
 	endif
 
-	return { 'static': l:is_static, 'components': split(l:components[0], '\.') }
-endfunction
-
-" Return true if `ident` is a valid Java identifier (package) component.
-function! s:IsValidJavaIdentifierComponent(ident)
-	if !len(a:ident)
-		return v:false
-	endif
-
-	" See Java SE Spec, section 3.8
-	return match(a:ident, '^[a-zA-Z$_][a-zA-Z0-9$_]*$') >= 0
+	return {
+		\ 'static': l:is_static,
+		\ 'components': s:SplitQualifiedClassName(l:components[0])
+		\ }
 endfunction
 
 " Merge `stmt` into `tree`. `stmt` must have the form:
@@ -50,12 +49,12 @@ function! s:MergeImportStatement(tree, stmt) abort
 		let l:remaining = a:stmt.components[idx+1:-1]
 
 		if l:component == '*'
-			" wildcard import are allowed, but validate
+			" wildcard import are allowed, but must be last component
 			if len(l:remaining)
 				echoerr 'malformed wildcard import "' .
 					\ join(a:stmt.components, '.') . '"'
 			endif
-		elseif !s:IsValidJavaIdentifierComponent(l:component)
+		elseif !util#IsValidJavaIdentifierComponent(l:component)
 			" check if this component is a valid identifier
 			echoerr 'unexpected identifier component "' . l:component . '"'
 		endif
@@ -115,6 +114,15 @@ function! s:MergeLeafsForNode(node)
 	return a:node
 endfunction
 
+" Merge `fq_classname` (a fully-qualified class name) into `tree`.
+" Return the tree.
+function! import_tree#Merge(tree, fq_classname, static = v:false)
+	return s:MergeImportStatement(a:tree, {
+		\ 'static': a:static,
+		\ 'components': s:SplitQualifiedClassName(a:fq_classname)
+		\ })
+endfunction
+
 " Flatten the import tree `tree` into a list of package imports `res`,
 " returning `res`. Prepend `prefix` to each entry. Append `postfix` to each
 " entry.
@@ -135,8 +143,9 @@ function! import_tree#Flatten(tree, res, prefix, postfix)
 	return a:res
 endfunction
 
-" Read and remove import statements from the current buffer, and return
-" dictionary trees of the imported classes (static and non-static).
+" Read and remove import statements from the current buffer and return
+" dictionary tree representations of the imported classes (static and
+" non-static).
 function! import_tree#Build() abort
 	" find and remove import statements from buffer
 	let l:imports = buffer#FilterLinesMatchingPattern('^\s*import\s.\+;\s*$')
