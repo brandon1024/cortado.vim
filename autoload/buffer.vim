@@ -1,9 +1,10 @@
 " Starting at line number `lnum`, find the first line matching pattern `patt`,
 " returning the line number. Return 0 if no such line could be found.
-function! buffer#FindLineMatchingPattern(lnum, patt, buf = '%') abort
+function! buffer#FindLineMatchingPattern(lnum, patt) abort
 	let l:idx = a:lnum
-	while l:idx <= line('$')
-		if match(getbufline(a:buf, l:idx), a:patt) >= 0
+
+	while l:idx > 0 && l:idx <= line('$')
+		if match(getbufline('%', l:idx), a:patt) >= 0
 			return l:idx
 		endif
 
@@ -11,6 +12,22 @@ function! buffer#FindLineMatchingPattern(lnum, patt, buf = '%') abort
 	endwhile
 
 	return 0
+endfunction
+
+" Starting at line number `lnum`, find and return all lines matching pattern
+" `patt`.
+function! buffer#FindLinesMatchingPattern(lnum, patt) abort
+	let l:idx = a:lnum
+	let l:lines = []
+	while l:idx != 0
+		let l:idx = buffer#FindLineMatchingPattern(l:idx, a:patt)
+		if l:idx
+			call extend(l:lines, getbufline('%', l:idx))
+			let l:idx += 1
+		endif
+	endwhile
+
+	return l:lines
 endfunction
 
 " Return a list of lines from the current buffer matching pattern `patt`.
@@ -32,9 +49,10 @@ function! buffer#FilterLinesMatchingPattern(patt) abort
 	return l:lines
 endfunction
 
-" Starting from line number `lnum`, remove all lines matching the pattern
-" `trunc_patt` until a line matching `stop_patt` is encountered.
-" Return the line number matching `stop_patt`, or 0 if pattern not found.
+" Starting from line number `lnum` in the current buffer, remove all lines
+" matching the pattern `trunc_patt` until a line matching `stop_patt` is
+" encountered.  Return the line number matching `stop_patt`, or 0 if pattern
+" not found.
 function! buffer#TruncateToPattern(lnum, trunc_patt, stop_patt) abort
 	let l:idx = a:lnum
 	for l in getline(l:idx, line('$'))
@@ -52,10 +70,10 @@ function! buffer#TruncateToPattern(lnum, trunc_patt, stop_patt) abort
 	return 0
 endfunction
 
-" Write out lines from `lines` at line number `lnum`. `lines` is flattened
-" before being written.
+" Write out lines from `lines` at line number `lnum` to the current buffer.
+" `lines` is flattened before being written.
 function! buffer#WriteLines(lnum, lines) abort
-	for line in reverse(flatten(a:lines))
+	for line in reverse(util#Flatten(a:lines))
 		call appendbufline('%', a:lnum, line)
 	endfor
 endfunction

@@ -41,7 +41,7 @@ function! s:MergeImportStatement(tree, stmt) abort
 	" check if static or non-static import
 	let l:root = a:tree.ns
 	if a:stmt.static
-		let l:root = tree.s
+		let l:root = a:tree.s
 	endif
 
 	for idx in range(len(a:stmt.components))

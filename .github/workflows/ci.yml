@@ -1,0 +1,31 @@
+name: CI/PR
+on: [push, pull_request]
+jobs:
+  linux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: thinca/vim-themis
+          path: vim-themis
+      - name: Install Dependencies
+        run: sudo apt install -y vim
+      - name: Run Tests
+        run: ./vim-themis/bin/themis
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: thinca/vim-themis
+          path: vim-themis
+      - name: Install Dependencies
+        run: brew install vim
+      - name: Run Tests
+        run: ./vim-themis/bin/themis
+

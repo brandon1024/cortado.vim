@@ -1,0 +1,122 @@
+Describe import_tree
+	Describe #Merge
+		Before
+			%bwipeout!
+		End
+
+		It should merge a fully-qualified class name into the given tree
+			edit test/input/StaticImports.java
+
+			let l:trees = import_tree#Build()
+			call import_tree#Merge(l:trees, 'ca.example.mytest.MyTestClass')
+
+			Assert True(has_key(l:trees.ns.ca.example.mytest, 'MyTestClass'))
+		End
+
+		It should merge a fully-qualified static method name into the given tree if instructed
+			edit test/input/StaticImports.java
+
+			let l:trees = import_tree#Build()
+			call import_tree#Merge(l:trees, 'ca.example.mytest.MyTestClass.myStaticMethod', v:true)
+
+			Assert True(has_key(l:trees.s.ca.example.mytest.MyTestClass, 'myStaticMethod'))
+		End
+	End
+
+	Describe #Flatten
+		Before
+			%bwipeout!
+		End
+
+		After
+			let g:java_import_wildcard_count = 0
+		End
+
+		It should flatten the trees into a flat list of imports with a specific prefix and postfix
+			let l:mock_tree = {
+				\ 'ca': { 'example': { 'MyClass': {}, 'MySecondClass': {} } },
+				\ }
+
+			let l:result = import_tree#Flatten(l:mock_tree, [], 'pre#', '#post')
+			Assert Equals(len(l:result), 2)
+			Assert True(match(l:result, 'pre#ca.example.MyClass#post') >= 0)
+			Assert True(match(l:result, 'pre#ca.example.MySecondClass#post') >= 0)
+		End
+
+		It should remove wildcard leaf nodes if configured
+			let g:java_import_wildcard_count = -1
+
+			let l:mock_tree = {
+				\ 'ca': { 'example': { '*': {}, 'MySecondClass': {} } },
+				\ }
+
+			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
+			Assert Equals(len(l:result), 1)
+			Assert True(match(l:result, 'ca.example.MySecondClass') >= 0)
+		End
+
+		It should merge leaf nodes into existing wildcard nodes if configured
+			let g:java_import_wildcard_count = 0
+
+			let l:mock_tree = {
+				\ 'ca': { 'example': { '*': {}, 'MySecondClass': {} } },
+				\ }
+
+			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
+			Assert Equals(len(l:result), 1)
+			Assert True(match(l:result, 'ca.example.*') >= 0)
+		End
+
+		It should merge leaf nodes if count is greater than configured value
+			let g:java_import_wildcard_count = 4
+
+			let l:mock_tree = {
+					\ 'ca': {
+						\ 'example': {
+							\ 'MyClass': {},
+							\ 'MySecondClass': {},
+							\ 'MyThirdClass': {},
+							\ 'mypackage': {
+								\ 'MyClass': {}
+							\ }
+						\ }
+					\ }
+				\ }
+
+			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
+			Assert Equals(len(l:result), 4)
+
+			let g:java_import_wildcard_count = 3
+
+			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
+			Assert Equals(len(l:result), 2)
+			Assert True(match(l:result, 'ca.example.*') >= 0)
+			Assert True(match(l:result, 'ca.example.mypackage.MyClass') >= 0)
+		End
+	End
+
+	Describe #Build
+		Before
+			%bwipeout!
+		End
+
+		It should build trees correctly
+			edit test/input/StaticImports.java
+
+			let l:imports = buffer#FindLinesMatchingPattern(1, 'import')
+			let l:initial_linecount = line('$')
+
+			let l:trees = import_tree#Build()
+			Assert Equals(line('$'), l:initial_linecount - len(l:imports))
+
+			Assert True(has_key(l:trees.s.ca.example.vim.Util, 'staticMethod'))
+			Assert True(has_key(l:trees.ns.java.io, 'IOException'))
+			Assert True(has_key(l:trees.ns.java.util, 'List'))
+			Assert True(has_key(l:trees.ns.java.util, 'Collections'))
+			Assert True(has_key(l:trees.ns.ca.example.vim.internal, 'ImportedClass'))
+			Assert True(has_key(l:trees.ns.ca.example.vim.internal, 'ImportedClass'))
+			Assert True(has_key(l:trees.ns.ca.example.vim.external, 'Interface'))
+			Assert True(has_key(l:trees.ns.javax.servlet, 'FilterChain'))
+		End
+	End
+End

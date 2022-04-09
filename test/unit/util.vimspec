@@ -1,0 +1,79 @@
+Describe util
+	Describe #IsValidJavaIdentifierComponent
+		It should return false is empty string provided
+			Assert False(util#IsValidJavaIdentifierComponent(''))
+		End
+
+		It should return false if does not match valid identifier
+			let l:invalid = [
+				\ '.thing',
+				\ '1thing',
+				\ 'thing@',
+				\ 'th@ing',
+				\ 'th ing'
+				\ ]
+
+			for ident in l:invalid
+				Assert False(util#IsValidJavaIdentifierComponent(ident), 'failed for ' . ident)
+			endfor
+		End
+
+		It should return true if does match valid identifier
+			let l:invalid = [
+				\ '$thing',
+				\ '_thing',
+				\ 'thing1',
+				\ 'Thing1',
+				\ 'T',
+				\ 'T$1_'
+				\ ]
+
+			for ident in l:invalid
+				Assert True(util#IsValidJavaIdentifierComponent(ident), 'failed for ' . ident)
+			endfor
+		End
+	End
+
+	Describe #Flatten
+		It should flatten up to maxdepth
+			let l:result = util#Flatten([[1,[2,3,4],5],[6,7,[[[8]]]]], 3)
+			Assert Equals(len(l:result), 8)
+
+			" flattened ones
+			for i in range(7)
+				Assert Equals(l:result[i], i + 1)
+			endfor
+
+			" last one is too nested
+			Assert Equals(l:result[7], [8])
+		End
+
+		It should flatten entire list if no maxdepth given
+			let l:result = util#Flatten([[1,[2,3,4],5],[6,7,[[[8]]]]])
+			Assert Equals(len(l:result), 8)
+			for i in range(8)
+				Assert Equals(l:result[i], i + 1)
+			endfor
+		End
+	End
+
+	Describe #Reduce
+		It should reduce values using the first value as the intial value if not provided
+			let l:result = util#Reduce([1, 3, 5], { acc, val -> acc + val })
+			Assert Equals(l:result, 9)
+		End
+
+		It should reduce values using the initial value if provided
+			let l:result = util#Reduce(['x', 'y'], { acc, val -> acc .. val }, 'a')
+			Assert Equals(l:result, 'axy')
+		End
+
+		It should throw error if list is empty and no initial value provided
+			Throws /^bug/ util#Reduce([], { acc, val -> acc + val })
+		End
+
+		It should throw error if too many arguments are given
+			Throws /^bug/ util#Reduce(['x', 'y'], { acc, val -> acc .. val }, 'a', 'b')
+		End
+	End
+End

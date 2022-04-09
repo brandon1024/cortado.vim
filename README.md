@@ -1,6 +1,11 @@
 # java-support.vim
+![CI/PR](https://img.shields.io/github/workflow/status/brandon1024/java-support.vim/CI/PR)
+![Documentation](https://img.shields.io/badge/Documentation-java--support.txt-brightgreen)
+
 A Vim plugin for easier editing of Java files. Rearrange, optimize, and
 reformat import statements. Import classes easily with the help of tag files.
+
+![](.github/screenshot.png)
 
 ## Installation
 This plugin has no external dependencies, so you can easily install with your
