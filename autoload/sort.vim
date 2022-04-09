@@ -44,7 +44,7 @@ function! s:FlattenGroups(groups) abort
 		endfor
 	endif
 
-	return flatten(a:groups)
+	return util#Flatten(a:groups)
 endfunction
 
 function! s:ImportPartitionReducer(acc, val) abort
@@ -55,7 +55,7 @@ endfunction
 " Sort `imports` according to `g:java_import_order`.
 function! s:SortImportStatements(imports) abort
 	" partition imports into static and non-static
-	let l:import_stmts = reduce(a:imports,
+	let l:import_stmts = util#Reduce(a:imports,
 		\ function('s:ImportPartitionReducer'), [[],[]])
 
 	" group statements according to configuration
@@ -85,7 +85,7 @@ function! s:SortImportStatements(imports) abort
 	endfor
 
 	" any statements that don't fit into any group are added to the end
-	call add(l:import_stmt_grps, flatten(l:import_stmts))
+	call add(l:import_stmt_grps, util#Flatten(l:import_stmts))
 
 	" sort groups
 	for group in l:import_stmt_grps
@@ -95,24 +95,30 @@ function! s:SortImportStatements(imports) abort
 	return s:FlattenGroups(l:import_stmt_grps)
 endfunction
 
+" Truncate blank lines starting at line number `lnum`. Return the next
+" non-blank line number.
+function! s:TruncateBlankLines(lnum)
+	return buffer#TruncateToPattern(a:lnum, '^\s*$', '^.')
+endfunction
+
 " Sort and write the given import trees `trees` to the current buffer.
 " Assumes that all import statements have already been removed from the
 " buffer.
 function! sort#JavaSortImportsTrees(trees) abort
 	" sort import statements according to configuration
-	let l:imports = s:SortImportStatements(flatten([
+	let l:imports = s:SortImportStatements(util#Flatten([
 		\ import_tree#Flatten(a:trees['s'], [], 'import static ', ';'),
 		\ import_tree#Flatten(a:trees['ns'], [], 'import ', ';')
 	\ ]))
 
-	" truncate leading empty lines
-	let l:idx = buffer#TruncateToPattern(1, '^$', '^.')
+	" truncate leading blank lines
+	let l:idx = s:TruncateBlankLines(1)
 
 	" look for package statement and truncate empty lines between package
 	" statement and first bit of text
 	let l:pkg_stmt_lnum = buffer#FindLineMatchingPattern(l:idx, '^\s*package\s.\+;\s*$')
 	if l:pkg_stmt_lnum > 0
-		call buffer#TruncateToPattern(l:pkg_stmt_lnum + 1, '^$', '^.')
+		call s:TruncateBlankLines(l:pkg_stmt_lnum + 1)
 		call buffer#WriteLines(l:pkg_stmt_lnum, ['', l:imports, ''])
 	else
 		call buffer#WriteLines(0, [l:imports, ''])

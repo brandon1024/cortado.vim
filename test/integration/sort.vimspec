@@ -1,0 +1,176 @@
+Describe sort
+	After
+		%bwipeout!
+		let g:java_import_wildcard_count = 0
+	End
+
+	Describe #JavaSortImports
+		It should not run in buffers without the 'java' filetype
+			enew!
+			read test/input/Simple.java
+			call sort#JavaSortImports()
+
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+			Assert Equals(len(l:import_lines), 2)
+
+			" should not have sorted
+			Assert Equals(l:import_lines[0], 'import ca.example.vim.internal.ImportedClass;')
+			Assert Equals(l:import_lines[1], 'import ca.example.vim.external.Interface;')
+		End
+
+		It should run in buffers with the 'java' filetype
+			edit! test/input/Simple.java
+
+			call sort#JavaSortImports()
+
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+			Assert Equals(len(l:import_lines), 2)
+
+			" should have sorted
+			Assert Equals(l:import_lines[0], 'import ca.example.vim.external.Interface;')
+			Assert Equals(l:import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
+		End
+
+		It should filter duplicate imports
+			edit! test/input/DuplicateImports1.java
+
+			call sort#JavaSortImports()
+
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, 'ca\.example\.vim\.internal\.ImportedClass')
+			Assert Equals(len(l:import_lines), 1)
+		End
+
+		It should group imports according to default configuration
+			edit! test/input/StaticImports.java
+
+			call sort#JavaSortImports()
+
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+
+			" first should be static imports
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import static')
+			Assert True(l:count > 0, 'no static imports found')
+
+			" Then the java. ones
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import java\.')
+			Assert True(l:count > 0, 'no java. imports found')
+
+			" Then the javax ones
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import javax\.')
+			Assert True(l:count > 0, 'no javax. imports found')
+
+			" then any remaining
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import ca\.')
+			Assert True(l:count > 0, 'no ca. imports found')
+		End
+
+		It should insert import statements after package statement
+			edit! test/input/Simple.java
+
+			call sort#JavaSortImports()
+
+			let l:lines = buffer#FindLinesMatchingPattern(1, '^import\|^package')
+			Assert Equals(len(l:lines), 3)
+
+			Assert Equals(l:lines[0], 'package ca.example.vim;')
+			Assert Equals(l:lines[1], 'import ca.example.vim.external.Interface;')
+			Assert Equals(l:lines[2], 'import ca.example.vim.internal.ImportedClass;')
+		End
+
+		It should truncate leading blank lines
+			edit! test/input/StaticImports.java
+			0put =''
+
+			Assert True(match(getline(1), '^$') >= 0)
+
+			call sort#JavaSortImports()
+
+			Assert True(match(getline(1), '^package') >= 0)
+		End
+
+		It should insert empty line between groups if configured
+			edit! test/input/StaticImports.java
+
+			call sort#JavaSortImports()
+
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import\|^$')
+
+			" single empty line
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^$')
+			Assert Equal(l:count, 1, 'missing empty line')
+
+			" first should be static imports
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import static')
+			Assert True(l:count > 0, 'no static imports found')
+
+			" single empty line
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^$')
+			Assert Equal(l:count, 1, 'missing empty line')
+
+			" Then the java. ones
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import java\.')
+			Assert True(l:count > 0, 'no java. imports found')
+
+			" Then the javax ones
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import javax\.')
+			Assert True(l:count > 0, 'no javax. imports found')
+
+			" single empty line
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^$')
+			Assert Equal(l:count, 1, 'missing empty line')
+
+			" then any remaining
+			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import ca\.')
+			Assert True(l:count > 0, 'no ca. imports found')
+		End
+
+		It should remove wildcard imports if configured to do so
+			let g:java_import_wildcard_count = -1
+
+			edit! test/input/Wildcard.java
+
+			call sort#JavaSortImports()
+
+			" ensure that wildcard import was removed
+			let l:idx = buffer#FindLineMatchingPattern(1, '^import java\.util\.\*;')
+			Assert Equals(l:idx, 0)
+
+			" ensure other java.util imports were not removed
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			Assert Equals(len(l:import_lines), 3)
+		End
+
+		It should merge imports into existing wildcard imports if configured to do so
+			let g:java_import_wildcard_count = 0
+
+			edit! test/input/Wildcard.java
+
+			call sort#JavaSortImports()
+
+			" ensure that wildcard import was not removed
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			Assert Equals(len(l:import_lines), 1)
+		End
+
+		It should merge imports when number of imports in same package exceed configured value
+			let g:java_import_wildcard_count = 3
+
+			edit! test/input/Wildcard.java
+
+			call sort#JavaSortImports()
+
+			" ensure java util imports were merged
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			Assert Equals(len(l:import_lines), 1)
+
+			" ensure ca.example.vim imports were merged
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import ca\.example\.vim\.\*')
+			Assert Equals(len(l:import_lines), 1)
+
+			" ensure ca.example.vim.internal imports were not merged
+			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import ca\.example\.vim\.internal')
+			Assert Equals(len(l:import_lines), 2)
+		End
+	End
+End
+
