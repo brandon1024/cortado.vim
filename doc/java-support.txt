@@ -206,12 +206,6 @@ Illegal Java Syntax~
 	If you're editing a particularly bad Java file--one that doesn't adhere to
 	the Java specification--the plugin might not behave correctly.
 
-Compound Import Statements~
-	If you have multiple import statements on the same line (as shown below),
-	the plugin will only read the first import and will discard any remaining
-	on that line. Split your import statements (one per line) and rerun the
-	tool.
-
 Classes in Base Package~
 	This plugin relies on package statements to determine the fully-qualified
 	classname. If classes exist in the base package (and don't have an import

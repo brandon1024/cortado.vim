@@ -101,14 +101,16 @@ function! s:TruncateBlankLines(lnum)
 	return buffer#TruncateToPattern(a:lnum, '^\s*$', '^.')
 endfunction
 
-" Sort and write the given import trees `trees` to the current buffer.
+" Sort and write the given import trees `tree` to the current buffer.
 " Assumes that all import statements have already been removed from the
 " buffer.
-function! sort#JavaSortImportsTrees(trees) abort
+function! sort#JavaSortImportsTrees(tree) abort
 	" sort import statements according to configuration
 	let l:imports = s:SortImportStatements(util#Flatten([
-		\ import_tree#Flatten(a:trees['s'], [], 'import static ', ';'),
-		\ import_tree#Flatten(a:trees['ns'], [], 'import ', ';')
+		\ import_tree#Flatten(a:tree,
+			\ { 'prefix': 'import static ', 'postfix': ';', 'filter': { 's': v:true } }),
+		\ import_tree#Flatten(a:tree,
+			\ { 'prefix': 'import ', 'postfix': ';', 'filter': { 's': v:false } })
 	\ ]))
 
 	" truncate leading blank lines
@@ -135,6 +137,6 @@ function! sort#JavaSortImports() abort
 		return
 	endif
 
-	call sort#JavaSortImportsTrees(import_tree#Build())
+	call sort#JavaSortImportsTrees(import_tree#BuildFromBuffer(v:true))
 endfunction
 

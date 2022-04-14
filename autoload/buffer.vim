@@ -34,10 +34,10 @@ endfunction
 " The lines are removed from the buffer.
 " Lines are trimmed of leading/trailing whitespace. Duplicate lines are
 " removed.
-function! buffer#FilterLinesMatchingPattern(patt) abort
+function! buffer#FilterLinesMatchingPattern(lnum, patt) abort
 	let l:lines = []
 
-	let l:lnum = 1
+	let l:lnum = a:lnum
 	while l:lnum > 0
 		let l:lnum = buffer#FindLineMatchingPattern(l:lnum, a:patt)
 		if l:lnum
