@@ -71,7 +71,7 @@ Describe buffer
 
 			let l:initial_linecount = line('$')
 
-			let l:lines = buffer#FilterLinesMatchingPattern('import')
+			let l:lines = buffer#FilterLinesMatchingPattern(1, 'import')
 			Assert Equals(len(l:lines), 8)
 
 			let l:lines = buffer#FindLinesMatchingPattern(1, 'import')

@@ -1,6 +1,6 @@
 # java-support.vim
-![CI/PR](https://img.shields.io/github/workflow/status/brandon1024/java-support.vim/CI/PR)
-![Documentation](https://img.shields.io/badge/Documentation-java--support.txt-brightgreen)
+![vim.ci](https://img.shields.io/github/workflow/status/brandon1024/java-support.vim/vim.ci)
+[![Documentation](https://img.shields.io/badge/Documentation-java--support.txt-brightgreen)](https://github.com/brandon1024/java-support.vim/blob/main/doc/java-support.txt)
 
 A Vim plugin for easier editing of Java files. Rearrange, optimize, and
 reformat import statements. Import classes easily with the help of tag files.
@@ -101,8 +101,6 @@ import java.io.ObjectInputFilter.Status;
 import java.io.SSLException;
 import java.io.StringWriter;
 import java.util.*;
-import java.util.Collections;
-import java.util.List;
 
 // let g:java_import_wildcard_count = 3
 import java.io.*;

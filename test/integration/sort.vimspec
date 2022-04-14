@@ -171,6 +171,16 @@ Describe sort
 			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import ca\.example\.vim\.internal')
 			Assert Equals(len(l:import_lines), 2)
 		End
+
+		It should not merge imports where a class name matches a component of a package for another import
+			edit! test/input/ImportClassPackageNameMatchBug.java
+
+			call sort#JavaSortImports()
+
+			" ensure imports were not collapsed into one
+			Assert True(buffer#FindLineMatchingPattern(1, 'import ca.example.vim.Internal;') > 0)
+			Assert True(buffer#FindLineMatchingPattern(1, 'import ca.example.vim.Internal.Interface;') > 0)
+		End
 	End
 End
 

@@ -1,162 +1,233 @@
-" Split a fully qualified class name `fq_classname` into its components.
-" Returns a list of components.
-function! s:SplitQualifiedClassName(fq_classname) abort
-	return split(trim(a:fq_classname), '\.')
+" Build an import tree from the current buffer and return it. If `remove` is
+" true, import statements are removed from the buffer.
+function! import_tree#BuildFromBuffer(remove = v:false) abort
+	return import_tree#BuildFromStatements(a:remove ?
+		\ buffer#FilterLinesMatchingPattern(1, '^\s*import\s.\+;\s*$') :
+		\ buffer#FindLinesMatchingPattern(1, '^\s*import\s.\+;\s*$'))
 endfunction
 
-" Split an import statement into individual tokens. The result is a dictionary
-" with the following structure:
-" 	{ 'static': bool, 'components': List }
-"
-" Compound statement are not supported. If `stmt` is not a valid import
-" statement, expect undefined behaviour.
-function! s:TokenizeStatement(stmt) abort
-	let l:is_static = v:false
-
-	" replace semicolon with space to split properly, and split into components
-	let l:components = split(substitute(a:stmt, ';', ' ', ''))
-	if l:components[0] != 'import'
-		echoerr 'unexpected statement "' . a:stmt . '"'
-	endif
-
-	" is it a static import?
-	let l:components = l:components[1:-1]
-	if l:components[0] == 'static'
-		let l:is_static = v:true
-		let l:components = l:components[1:-1]
-	endif
-
-	return {
-		\ 'static': l:is_static,
-		\ 'components': s:SplitQualifiedClassName(l:components[0])
-		\ }
-endfunction
-
-" Merge `stmt` into `tree`. `stmt` must have the form:
-" 	{ 'static': bool, 'components': List }
-"
-" Returns `tree`, which will have the format:
-" 	{ 'root': { 'child1': {...}, 'child2': {...} }, 'leaf': {} }
-function! s:MergeImportStatement(tree, stmt) abort
-	" check if static or non-static import
-	let l:root = a:tree.ns
-	if a:stmt.static
-		let l:root = a:tree.s
-	endif
-
-	for idx in range(len(a:stmt.components))
-		let l:component = a:stmt.components[idx]
-		let l:remaining = a:stmt.components[idx+1:-1]
-
-		if l:component == '*'
-			" wildcard import are allowed, but must be last component
-			if len(l:remaining)
-				echoerr 'malformed wildcard import "' .
-					\ join(a:stmt.components, '.') . '"'
-			endif
-		elseif !util#IsValidJavaIdentifierComponent(l:component)
-			" check if this component is a valid identifier
-			echoerr 'unexpected identifier component "' . l:component . '"'
-		endif
-
-		if !has_key(l:root, l:component)
-			let l:root[l:component] = {}
-		endif
-
-		let l:root = l:root[l:component]
+" Build a tree from a list of import statements `stmts` and return it. Import
+" statements must match the pattern '^\s*import\s.\+;\s*$', otherwise expect
+" undefined behaviour.
+function! import_tree#BuildFromStatements(stmts) abort
+	let l:normalized_stmts = []
+	for stmt in a:stmts
+		call extend(l:normalized_stmts, s:NormalizeImportStatements(stmt))
 	endfor
+
+	let l:tree = s:TreeNodeInit()
+	for [cmps, meta] in l:normalized_stmts
+		call import_tree#Merge(l:tree, cmps, meta)
+	endfor
+
+	return l:tree
+endfunction
+
+" Merge `stmt` into `tree`, returning `tree`. `stmt` must be a fully-qualified
+" class, method, or enum. `meta` defines properties for the leaf node.
+"
+" This function makes a reasonable effort to parse an import statement. It will
+" try to split up a compound statement into individual imports.
+"
+" This function validates the import statement and may throw an error if the
+" statement is invalid.
+function! import_tree#Merge(tree, stmt, meta = {}) abort
+	let l:pkg_components = split(a:stmt, '\.')
+
+	if !len(l:pkg_components)
+		echoerr 'bug: empty statement given'
+	endif
+	
+	" check to see if the components are valid
+	for i in range(len(l:pkg_components))
+		let l:component = l:pkg_components[i]
+
+		" the last component can be a wildcard '*'
+		if i == (len(l:pkg_components) - 1) && l:pkg_components[i] == '*'
+			continue
+		endif
+
+		" otherwise, ensure the component is a valid java identifier
+		if !util#IsValidJavaIdentifierComponent(l:component)
+			echoerr 'invalid import statement "' . a:stmt . '"'
+		endif
+	endfor
+
+	" make way for leaf node
+	let l:path = s:CreatePathInTree(a:tree, l:pkg_components[0:-2])
+	
+	" insert leaf
+	let l:path.leaf[l:pkg_components[-1]] = a:meta
 
 	return a:tree
 endfunction
 
-" Depending on configuration, process leaf nodes for `node`.
+" Flatten `tree` into a flat list and return it.
 "
-" If `g:java_import_wildcard_count` is a positive integer, merge
-" any leafs in `node` into a wildcard. If zero, don't merge leafs in `node`.
-" If negative, don't merge leafs in `node` and remove existing wildcard
-" imports. See docs for specifcs.
-function! s:MergeLeafsForNode(node)
-	let l:merge_override = has_key(a:node, '*')
+" The `options` dictionary can be used to customize how the tree is flattened.
+" The following options are supported:
+" 	'prefix': <string>
+" 		Prepend this string to each entry.
+" 	'postfix': <string>
+" 		Append this string to each entry
+" 	'filter': <dictionary>
+" 		The `filter` dictionary can be used to select which nodes in the tree to
+" 		flatten. The keys/values map to the supported fields for leaf nodes:
+" 			's': v:true/v:false (indicate whether to filter static/non-static
+" 			entries)
+" 	'initial': <list>
+" 		Flatten tree into this list instead of a new one.
+function! import_tree#Flatten(tree, options = {}) abort
+	for key in keys(a:options)
+		if index(['prefix', 'postfix', 'filter', 'initial'], key) < 0
+			echoerr 'bug: "' . key . '" is not a supported option'
+		endif
+	endfor
 
-	" if wildcard_count is zero and we have a wildcard at this node,
-	" merge leafs into it, otherwise do nothing
-	if g:java_import_wildcard_count == 0 && !l:merge_override
-		return a:node
+	" set some defaults
+	let l:opts = extend({
+		\ 'prefix': '',
+		\ 'postfix': '',
+		\ 'filter': {},
+		\ 'initial': [],
+		\ '_path': []
+		\ }, a:options)
+
+	return s:FlattenInternal(a:tree, l:opts)
+endfunction
+
+" Create an empty node.
+function! s:TreeNodeInit() abort
+	return { 'leaf': {}, 'children': {} }
+endfunction
+
+function! s:NormalizeImportStatement(stmt)
+	let l:matches = matchlist(a:stmt,
+		\ '^import\s\+\(static\)\?\(.*\)$')
+	if len(l:matches) < 3
+		echoerr 'unexpected statement "' . a:stmt . '"'
 	endif
 
-	if has_key(a:node, '*')
-		call remove(a:node, '*')
+	let l:matched = l:matches[0]
+	let l:is_static = len(l:matches[1])
+	let l:fq_import = substitute(l:matches[2], '\s', '', 'g')
+
+	if !len(l:matched) || !len(l:fq_import)
+		echoerr 'unexpected statement "' . a:stmt . '"'
 	endif
 
+	return [l:fq_import, { 's': l:is_static ? v:true : v:false }]
+endfunction
+
+" Build and return a normalized list of import statements from string `stmts`.
+"
+" The result will be a list of tuples [components, meta], with the following
+" format:
+" 	[['ca.example.package.MyClass', { 's': v:true }], ...]
+"
+" `components` is the fully-qualified import. `meta` is metadata for the
+" import, which has the key 's' indicating whether it's a static import or not.
+function! s:NormalizeImportStatements(stmts) abort
+	let l:result = []
+
+	for stmt in split(a:stmts, ';')
+		let l:stmt = trim(substitute(stmt, '\s\+', ' ', 'g'))
+		if !len(l:stmt)
+			continue
+		endif
+
+		let l:normalized_stmt = s:NormalizeImportStatement(l:stmt)
+		call add(l:result, l:normalized_stmt)
+	endfor
+
+	return l:result
+endfunction
+
+" Create a path within `tree` with nodes `nodes`, returning the newly created
+" path within `tree`.
+function! s:CreatePathInTree(tree, nodes) abort
+	let l:node = a:tree
+	for name in a:nodes
+		" add leaf and children keys, if they don't exist already
+		let l:node_prototype = s:TreeNodeInit()
+		call extend(l:node, l:node_prototype, 'keep')
+		call extend(l:node.children, { name: l:node_prototype }, 'keep')
+
+		let l:node = l:node.children[name]
+	endfor
+
+	return l:node
+endfunction
+
+" Check whether a node should be flattened based on the filter and it's metadata.
+function! s:ShouldFlattenNode(meta, filter) abort
+	for [k, v] in items(a:filter)
+		if !has_key(a:meta, k) || v != a:meta[k]
+			return v:false
+		endif
+	endfor
+
+	return v:true
+endfunction
+
+" Merge (or otherwise manipulate) leaf nodes according to configuration
+" `g:java_import_wildcard_count`.
+"
+" See documentation for semantics of this option.
+function! s:MergeLeafNodes(leafs) abort
+	let l:leafs = extend({}, a:leafs)
+
+	" nuclear: remove and let user fix imports
 	if g:java_import_wildcard_count < 0
-		return a:node
-	endif
-
-	if g:java_import_wildcard_count > 0 || l:merge_override
-		" count number of leaf nodes
-		let l:leaf_keys = []
-		for key in keys(a:node)
-			if !len(a:node[key])
-				call add(l:leaf_keys, key)
-			endif
-		endfor
-
-		" merge if it's greater than configured value
-		if len(l:leaf_keys) >= g:java_import_wildcard_count || l:merge_override
-			for key in l:leaf_keys
-				call remove(a:node, key)
-			endfor
-
-			let a:node['*'] = {}
+		if has_key(l:leafs, '*')
+			call remove(l:leafs, '*')
 		endif
+
+		return l:leafs
 	endif
 
-	return a:node
+	" sane: merge into a wildcard if one already exists
+	if g:java_import_wildcard_count == 0
+		if !has_key(l:leafs, '*')
+			return l:leafs
+		endif
+
+		" assume non-static; this should be done smarter later
+		return { '*': { 's': v:false } }
+	endif
+
+	" chaotic evil: merge into a wildcard if over a certain number
+	let l:count = len(keys(l:leafs)) - (has_key(l:leafs, '*') ? 1 : 0)
+	if l:count >= g:java_import_wildcard_count
+		" assume non-static; this should be done smarter later
+		return { '*': { 's': v:false } }
+	endif
+
+	return l:leafs
 endfunction
 
-" Merge `fq_classname` (a fully-qualified class name) into `tree`.
-" Return the tree.
-function! import_tree#Merge(tree, fq_classname, static = v:false)
-	return s:MergeImportStatement(a:tree, {
-		\ 'static': a:static,
-		\ 'components': s:SplitQualifiedClassName(a:fq_classname)
-		\ })
-endfunction
-
-" Flatten the import tree `tree` into a list of package imports `res`,
-" returning `res`. Prepend `prefix` to each entry. Append `postfix` to each
-" entry.
-function! import_tree#Flatten(tree, res, prefix, postfix)
-	call s:MergeLeafsForNode(a:tree)
-
-	for [key, child] in items(a:tree)
-		let l:path = a:prefix . key
-
-		" recurse into chid trees
-		if len(child)
-			call import_tree#Flatten(child, a:res, l:path . '.', a:postfix)
-		else
-			call add(a:res, l:path . a:postfix)
+" Same as import_tree#Flatten, but for internal use in this script.
+" Doesn't do any checking on `options`, so that keys can be added and
+" manipulated as needed.
+"
+" See public function doc for specifics.
+function! s:FlattenInternal(tree, options)
+	" first process any leaf nodes
+	let l:merged_leaf_nodes = s:MergeLeafNodes(a:tree.leaf)
+	for [name, meta] in items(l:merged_leaf_nodes)
+		if s:ShouldFlattenNode(meta, a:options.filter)
+			let l:fq_import = join(util#Flatten([a:options._path, name]), '.')
+			call add(a:options.initial, a:options.prefix . l:fq_import . a:options.postfix)
 		endif
 	endfor
 
-	return a:res
-endfunction
-
-" Read and remove import statements from the current buffer and return
-" dictionary tree representations of the imported classes (static and
-" non-static).
-function! import_tree#Build() abort
-	" find and remove import statements from buffer
-	let l:imports = buffer#FilterLinesMatchingPattern('^\s*import\s.\+;\s*$')
-
-	" generate import tree
-	let l:import_tree = { 's': {}, 'ns': {} }
-	for stmt in l:imports
-		let l:import_stmt = s:TokenizeStatement(stmt)
-		let l:import_tree = s:MergeImportStatement(l:import_tree, l:import_stmt)
+	" then recurse into children
+	for [name, node] in items(a:tree.children)
+		let l:new_path = util#Flatten([a:options._path, name])
+		call s:FlattenInternal(node,
+			\ extend({ '_path': l:new_path }, a:options, 'keep'))
 	endfor
-	
-	return l:import_tree
+
+	return a:options.initial
 endfunction
 

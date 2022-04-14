@@ -1,4 +1,4 @@
-name: CI/PR
+name: vim.ci
 on: [push, pull_request]
 jobs:
   linux:
@@ -15,7 +15,7 @@ jobs:
       - name: Install Dependencies
         run: sudo apt install -y vim
       - name: Run Tests
-        run: ./vim-themis/bin/themis
+        run: ./vim-themis/bin/themis --reporter spec
   macos:
     runs-on: macos-latest
     steps:
@@ -27,5 +27,5 @@ jobs:
       - name: Install Dependencies
         run: brew install vim
       - name: Run Tests
-        run: ./vim-themis/bin/themis
+        run: ./vim-themis/bin/themis --reporter spec
 

@@ -1,25 +1,159 @@
 Describe import_tree
+	Describe #BuildFromBuffer
+		Before
+			%bwipeout!
+		End
+
+		It should remove import statements from the buffer if arg is true
+			edit! test/input/StaticImports.java
+
+			call import_tree#BuildFromBuffer(v:true)
+			let l:lines = buffer#FindLinesMatchingPattern(1, 'import')
+			Assert Equal(len(l:lines), 0)
+		End
+
+		It should not remove import statements from the buffer if arg is false
+			edit! test/input/StaticImports.java
+
+			call import_tree#BuildFromBuffer(v:false)
+			let l:lines = buffer#FindLinesMatchingPattern(1, 'import')
+			Assert True(len(l:lines) > 0)
+		End
+
+		It should correctly build an import tree from the statements in the buffer
+			edit! test/input/StaticImports.java
+
+			let l:tree = import_tree#BuildFromBuffer(v:true)
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.io.IOException'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.List'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'ca.example.vim.external.Interface'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'javax.servlet.FilterChain'))
+		End
+	End
+
+	Describe #BuildFromStatements
+		It should correctly build an import from the given statements
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			Assert True(test_utils#tree#HasNode(l:tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.List'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.Collections'))
+		End
+
+		It should correctly set metadata for static imports
+			let l:stmt = 'import static ca.example.vim.Util.staticMethod;'
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+
+			Assert True(test_utils#tree#HasNode(l:tree, 'ca.example.vim.Util.staticMethod'))
+			let [_, l:meta] = test_utils#tree#GetMetadataForNode(l:tree, 'ca.example.vim.Util.staticMethod')
+			Assert True(has_key(l:meta, 's'))
+			Assert True(l:meta.s)
+		End
+
+		It should correctly set metadata for non-static imports
+			let l:stmt = 'import java.util.List;'
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.List'))
+			let [_, l:meta] = test_utils#tree#GetMetadataForNode(l:tree, 'java.util.List')
+			Assert True(has_key(l:meta, 's'))
+			Assert False(l:meta.s)
+		End
+
+		It should create a tree with the correct internal structure
+			let l:stmt = 'import java.util.List;'
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+
+			" level 1
+			Assert True(has_key(l:tree, 'children'))
+			Assert True(has_key(l:tree, 'leaf'))
+			Assert False(len(l:tree.leaf))
+
+			" children at level 1
+			Assert Equal(len(l:tree.children), 1)
+			Assert True(has_key(l:tree.children, 'java'))
+
+			" level 2
+			Assert True(has_key(l:tree.children.java, 'children'))
+			Assert True(has_key(l:tree.children.java, 'leaf'))
+			Assert False(len(l:tree.children.java.leaf))
+
+			" children at level 2
+			Assert Equal(len(l:tree.children.java.children), 1)
+			Assert True(has_key(l:tree.children.java.children, 'util'))
+
+			" level 3
+			Assert True(has_key(l:tree.children.java.children.util, 'children'))
+			Assert True(has_key(l:tree.children.java.children.util, 'leaf'))
+			Assert Equal(len(l:tree.children.java.children.util.children), 0)
+
+			" leafs at level 3
+			Assert Equal(len(l:tree.children.java.children.util.leaf), 1)
+			Assert True(has_key(l:tree.children.java.children.util.leaf, 'List'))
+		End
+
+		It should filter whitespace properly
+			let l:stmt = '     import 	 java  . util.List   ; '
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.List'))
+		End
+
+		It should split compound statements
+			let l:stmt = 'import javax.servlet.FilterChain; import java.util.Collections;'
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'javax.servlet.FilterChain'))
+		End
+
+		It should correctly insert wildcard imports
+			let l:stmt = 'import java.util.*;'
+			let l:tree = import_tree#BuildFromStatements([l:stmt])
+
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.*'))
+		End
+
+		It should throw error if statement is invalid
+			Throws /unexpected statement/ import_tree#BuildFromStatements(['import static ;'])
+			Throws /invalid import statement/ import_tree#BuildFromStatements(['import java.util.1List'])
+			Throws /unexpected statement/ import_tree#BuildFromStatements(['imports static java.util.List'])
+			Throws /unexpected statement/ import_tree#BuildFromStatements(['static java.util.List'])
+			Throws /unexpected statement/ import_tree#BuildFromStatements(['import java.util.List;i'])
+		End
+	End
+
 	Describe #Merge
 		Before
 			%bwipeout!
 		End
 
-		It should merge a fully-qualified class name into the given tree
-			edit test/input/StaticImports.java
+		It should insert a fully-qualified entity into the tree
+			edit! test/input/Simple.java
 
-			let l:trees = import_tree#Build()
-			call import_tree#Merge(l:trees, 'ca.example.mytest.MyTestClass')
+			let l:tree = import_tree#BuildFromBuffer(v:false)
+			call import_tree#Merge(l:tree, 'com.example.vim.thing')
 
-			Assert True(has_key(l:trees.ns.ca.example.mytest, 'MyTestClass'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'com.example.vim.thing'))
 		End
 
-		It should merge a fully-qualified static method name into the given tree if instructed
-			edit test/input/StaticImports.java
+		It should create the tree node with the given metadata
+			edit! test/input/Simple.java
 
-			let l:trees = import_tree#Build()
-			call import_tree#Merge(l:trees, 'ca.example.mytest.MyTestClass.myStaticMethod', v:true)
+			let l:tree = import_tree#BuildFromBuffer(v:false)
+			call import_tree#Merge(l:tree, 'com.example.vim.thing', { 'my-metadata': v:true })
 
-			Assert True(has_key(l:trees.s.ca.example.mytest.MyTestClass, 'myStaticMethod'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'com.example.vim.thing'))
+			let [_, l:meta] = test_utils#tree#GetMetadataForNode(l:tree, 'com.example.vim.thing')
+			
+			Assert True(has_key(l:meta, 'my-metadata'))
+			Assert Equals(l:meta['my-metadata'], v:true)
 		End
 	End
 
@@ -32,91 +166,144 @@ Describe import_tree
 			let g:java_import_wildcard_count = 0
 		End
 
-		It should flatten the trees into a flat list of imports with a specific prefix and postfix
-			let l:mock_tree = {
-				\ 'ca': { 'example': { 'MyClass': {}, 'MySecondClass': {} } },
-				\ }
+		It should flatten a simple tree to a list of unique identifiers
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.List;'
+				\ ]
 
-			let l:result = import_tree#Flatten(l:mock_tree, [], 'pre#', '#post')
-			Assert Equals(len(l:result), 2)
-			Assert True(match(l:result, 'pre#ca.example.MyClass#post') >= 0)
-			Assert True(match(l:result, 'pre#ca.example.MySecondClass#post') >= 0)
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree)
+			
+			Assert Equals(len(l:result), 3)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, 'java.util.Collections') >= 0)
+			Assert True(index(l:result, 'java.util.List') >= 0)
 		End
 
-		It should remove wildcard leaf nodes if configured
+		It should prepend the prefix to each returned value
+			let l:tree = import_tree#BuildFromStatements(['import javax.servlet.FilterChain;'])
+			let l:result = import_tree#Flatten(l:tree, { 'prefix': '$' })
+			
+			Assert Equals(len(l:result), 1)
+			Assert True(index(l:result, '$javax.servlet.FilterChain') >= 0)
+		End
+
+		It should append the postfix to each returned value
+			let l:tree = import_tree#BuildFromStatements(['import javax.servlet.FilterChain;'])
+			let l:result = import_tree#Flatten(l:tree, { 'postfix': '$' })
+			
+			Assert Equals(len(l:result), 1)
+			Assert True(index(l:result, 'javax.servlet.FilterChain$') >= 0)
+		End
+
+		It should correctly filter elements by their metadata if configured
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import static java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			" with static filter
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree, { 'filter': { 's': v:true } })
+			
+			Assert Equals(len(l:result), 1)
+			Assert True(index(l:result, 'java.util.Collections') >= 0)
+
+			" now with non-static
+			let l:result = import_tree#Flatten(l:tree, { 'filter': { 's': v:false } })
+			
+			Assert Equals(len(l:result), 2)
+			Assert True(index(l:result, 'java.util.List') >= 0)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+		End
+
+		It should use the provided initial list if configured
+			let l:initial = ['test123']
+			let l:tree = import_tree#BuildFromStatements(['import javax.servlet.FilterChain;'])
+			let l:result = import_tree#Flatten(l:tree, { 'initial': l:initial })
+			
+			Assert Equals(len(l:result), 2)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, l:initial[0]) >= 0)
+		End
+
+		It should remove wildcard nodes if configured
 			let g:java_import_wildcard_count = -1
 
-			let l:mock_tree = {
-				\ 'ca': { 'example': { '*': {}, 'MySecondClass': {} } },
-				\ }
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.*;'
+				\ ]
 
-			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
-			Assert Equals(len(l:result), 1)
-			Assert True(match(l:result, 'ca.example.MySecondClass') >= 0)
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree)
+			
+			Assert Equals(len(l:result), 3)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, 'java.util.Collections') >= 0)
+			Assert True(index(l:result, 'java.util.List') >= 0)
 		End
 
-		It should merge leaf nodes into existing wildcard nodes if configured
+		It should merge leafs into wildcard nodes if configured
 			let g:java_import_wildcard_count = 0
 
-			let l:mock_tree = {
-				\ 'ca': { 'example': { '*': {}, 'MySecondClass': {} } },
-				\ }
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.*;'
+				\ ]
 
-			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
-			Assert Equals(len(l:result), 1)
-			Assert True(match(l:result, 'ca.example.*') >= 0)
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree)
+			
+			Assert Equals(len(l:result), 2)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, 'java.util.*') >= 0)
 		End
 
-		It should merge leaf nodes if count is greater than configured value
-			let g:java_import_wildcard_count = 4
-
-			let l:mock_tree = {
-					\ 'ca': {
-						\ 'example': {
-							\ 'MyClass': {},
-							\ 'MySecondClass': {},
-							\ 'MyThirdClass': {},
-							\ 'mypackage': {
-								\ 'MyClass': {}
-							\ }
-						\ }
-					\ }
-				\ }
-
-			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
-			Assert Equals(len(l:result), 4)
-
+		It should merge leafs nodes into wildcards if the number of leafs exceed configured value
 			let g:java_import_wildcard_count = 3
 
-			let l:result = import_tree#Flatten(l:mock_tree, [], '', '')
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.Arrays;'
+				\ ]
+
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree)
+			
 			Assert Equals(len(l:result), 2)
-			Assert True(match(l:result, 'ca.example.*') >= 0)
-			Assert True(match(l:result, 'ca.example.mypackage.MyClass') >= 0)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, 'java.util.*') >= 0)
+
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let l:tree = import_tree#BuildFromStatements(l:statements)
+			let l:result = import_tree#Flatten(l:tree)
+			
+			Assert Equals(len(l:result), 3)
+			Assert True(index(l:result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(l:result, 'java.util.Collections') >= 0)
+			Assert True(index(l:result, 'java.util.List') >= 0)
 		End
-	End
 
-	Describe #Build
-		Before
-			%bwipeout!
-		End
-
-		It should build trees correctly
-			edit test/input/StaticImports.java
-
-			let l:imports = buffer#FindLinesMatchingPattern(1, 'import')
-			let l:initial_linecount = line('$')
-
-			let l:trees = import_tree#Build()
-			Assert Equals(line('$'), l:initial_linecount - len(l:imports))
-
-			Assert True(has_key(l:trees.s.ca.example.vim.Util, 'staticMethod'))
-			Assert True(has_key(l:trees.ns.java.io, 'IOException'))
-			Assert True(has_key(l:trees.ns.java.util, 'List'))
-			Assert True(has_key(l:trees.ns.java.util, 'Collections'))
-			Assert True(has_key(l:trees.ns.ca.example.vim.internal, 'ImportedClass'))
-			Assert True(has_key(l:trees.ns.ca.example.vim.internal, 'ImportedClass'))
-			Assert True(has_key(l:trees.ns.ca.example.vim.external, 'Interface'))
-			Assert True(has_key(l:trees.ns.javax.servlet, 'FilterChain'))
+		It should throw if options has an unexpected key
+			let l:tree = import_tree#BuildFromStatements([])
+			Throws /not a supported option/ import_tree#Flatten(l:tree, { '_path': [] })
 		End
 	End
 End
+
