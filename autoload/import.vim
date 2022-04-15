@@ -1,106 +1,75 @@
-" - search (and cache) imports in other project files
-" - omit import if the import is in the same package (stretch goal?)
-" - nested classes and enums (kinda difficult)
-" - compound statements (will take some regex magic)
-" - restore buffer if there's an error (will take a bit of work)
-
 " Get the keyword (<cword>) under the cursor.
 function! s:GetKeywordUnderCursor() abort
 	return expand('<cword>')
 endfunction
 
-" Filter a list of `tags` and return only those that have a 'kind' `kind`.
-function! s:FilterTagsByKind(tags, kind) abort
-	let l:result = []
-	for tag in a:tags
-		if has_key(tag, 'kind') && tag.kind == a:kind
-			call add(l:result, tag)
+" Build popup entry strings for the given `tag_results`.
+" `mode` is used to select a format.
+function! s:BuildPopupEntries(tag_results, mode)
+	let l:popup_entries = []
+	for result in a:tag_results
+		let l:entry = ''
+		if a:mode == 0
+			let l:entry = printf(' [%s%s] %s ', result.s ? 'static ' : '',
+				\ result.type, join(result.fq_name, '.'))
+		elseif a:mode == 1
+			let l:entry = ' ' . pathshorten(result.fname) . ' '
+		elseif a:mode == 2
+			let l:entry = ' ' . result.fname . ' '
+		else
+			echoerr 'bug: unexpected mode ' . a:mode
 		endif
+
+		call add(l:popup_entries, l:entry)
 	endfor
 
-	return l:result
+	return l:popup_entries
 endfunction
 
-" Filter a list of `tags` and return only those that have a 'kind' of 'c'
-" (class).
-function! s:FilterTagClasses(tags) abort
-	return s:FilterTagsByKind(a:tags, 'c')
+" Rotate the entries in the popup, and return `mode`.
+function! s:RotatePopupEntries(id, mode, tag_results)
+	let l:mode = a:mode < 0 ? 2 : (a:mode > 2 ? 0 : a:mode)
+	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:mode)
+	call popup_settext(a:id, l:popup_entries)
+	return l:mode
 endfunction
-
-" Filter a list of `tags` and return only those that have a 'kind' of 'e'
-" (enum).
-function! s:FilterTagEnums(tags) abort
-	return s:FilterTagsByKind(a:tags, 'e')
-endfunction
-
-" Read tag files for classes and enums with a name matching the given keyword.
-" Return a list of class references with the following format:
-" 	[{ 'type': '<c or e>', 'fq_classname': 'com.example.Keyword', filename: '<filename>' }, ...]
-"
-" May return an empty list if tags could not be read, or if none of the files
-" have a package statement.
-function! s:ReadTagsForImports(keyword) abort
-	" match keywords against tagfiles, looking for classes
-	let l:prompt_results = []
-
-	" read tags for keyword and filter for classes
-	let l:tags = taglist('^' . a:keyword . '$')
-	let l:tags = s:FilterTagClasses(l:tags) + s:FilterTagEnums(l:tags)
-
-	" for each result, read the file and look for a package statement
-	for tag in l:tags
-		for line in readfile(tag.filename)
-			let l:matches = matchlist(line, 'package\s\+\([^;]\+\);')
-
-			if len(l:matches)
-				let l:fq_classname = l:matches[1] . '.' . a:keyword
-
-				" if this tag is an enum, we'll build it a bit different
-				if tag.kind == 'e' && has_key(tag, 'enum')
-					let l:fq_classname = l:matches[1] . '.' . tag.enum . '.' . a:keyword
-				endif
-
-				call add(l:prompt_results, {
-					\ 'type': tag.kind,
-					\ 'fq_classname': l:fq_classname,
-					\ 'filename': tag.filename
-					\ })
-				break
-			endif
-		endfor
-	endfor
-
-	" if we none of the files have a package statement, return
-	if !len(l:prompt_results)
-		return []
-	endif
-
-	return l:prompt_results
-endfunction
-
-" Callback for the popup menu.
 
 " Show a popup menu with the possible classes or enums to import, allowing the
 " user to select which to import.
-function! s:ImportFromSelection(keyword, import_tag_results) abort
-	let l:popup_entries = []
-	for result in a:import_tag_results
-		call add(l:popup_entries, ' ' . result.fq_classname . ' [' . result.type . '] ')
-	endfor
+function! s:ImportFromSelection(keyword, tag_results) abort
+	let l:state = 0
 
 	function! s:PopupMenuCallback(id, result) abort closure
 		if a:result <= 0
 			return
 		endif
 
-		if a:result > len(a:import_tag_results)
+		if a:result > len(a:tag_results)
 			echoerr 'bug: unexpected result in popup callback "' . a:result. '"'
 		endif
 
-		let l:path = a:import_tag_results[a:result - 1].fq_classname
-		call s:ImportClass(l:path)
+		call s:ImportClass(a:tag_results[a:result - 1])
 	endfunction
 
+	function! s:PopupMenuFilterCallback(id, key) abort closure
+		if a:key == 'l' || a:key == "\<Right>"
+			let l:state = s:RotatePopupEntries(a:id, l:state + 1, a:tag_results)
+			return 1
+		elseif a:key == 'h' || a:key == "\<Left>"
+			let l:state = s:RotatePopupEntries(a:id, l:state - 1, a:tag_results)
+			return 1
+		elseif a:key == 'j'
+			return popup_filter_menu(a:id, "\<Down>")
+		elseif a:key == 'k'
+			return popup_filter_menu(a:id, "\<Up>")
+		elseif a:key == "\<Tab>"
+			return popup_filter_menu(a:id, "\<CR>")
+		else
+			return popup_filter_menu(a:id, a:key)
+		endif
+	endfunction
+
+	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:state)
 	call popup_create(l:popup_entries, {
 		\ 'line': 'cursor+1',
 		\ 'col': 'cursor',
@@ -108,18 +77,18 @@ function! s:ImportFromSelection(keyword, import_tag_results) abort
 		\ 'wrap': v:false,
 		\ 'moved': 'word',
 		\ 'cursorline': 1,
-		\ 'filter': function('popup_filter_menu'),
+		\ 'filter': function('s:PopupMenuFilterCallback'),
 		\ 'callback': function('s:PopupMenuCallback')
 		\ })
 endfunction
 
 " Import a class with the given fully-qualified class name.
-function! s:ImportClass(fq_classname) abort
-	let l:trees = import_tree#Build()
-	call import_tree#Merge(l:trees, a:fq_classname)
+function! s:ImportClass(tag_result) abort
+	let l:trees = import_tree#BuildFromBuffer(v:true)
+	call import_tree#Merge(l:trees, a:tag_result.fq_name, { 's': a:tag_result.s })
 	call sort#JavaSortImportsTrees(l:trees)
 
-	echo 'imported "' . a:fq_classname . '"'
+	echo 'imported "' . join(a:tag_result.fq_name, '.') . '"'
 endfunction
 
 " Import a class with name `keyword`. If `keyword` is empty or unset, default
@@ -156,10 +125,10 @@ function! import#JavaImportKeyword(keyword = '') abort
 		return
 	endif
 
-	let l:import_tag_results = s:ReadTagsForImports(l:keyword)
+	let l:import_tag_results = tags#Lookup(l:keyword)
 	if !len(l:import_tag_results)
 		echohl WarningMsg |
-			\ echo 'cannot import class: no classes found for keyword "' . a:keyword . '"' |
+			\ echo 'cannot import class: no classes found for keyword "' . l:keyword . '"' |
 			\ echohl None
 		return
 	endif

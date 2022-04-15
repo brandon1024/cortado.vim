@@ -10,4 +10,5 @@ call themis#log(execute('version'))
 call themis#log('-----------------------------------------------------------')
 
 set runtimepath+=test/util
+set tags+=test/input/tags
 
