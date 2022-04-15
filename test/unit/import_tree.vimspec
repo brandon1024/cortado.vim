@@ -155,6 +155,16 @@ Describe import_tree
 			Assert True(has_key(l:meta, 'my-metadata'))
 			Assert Equals(l:meta['my-metadata'], v:true)
 		End
+
+		It should also accept a list of import components
+			edit! test/input/Simple.java
+
+			let l:tree = import_tree#BuildFromBuffer(v:false)
+			call import_tree#Merge(l:tree, ['com', 'example', 'vim', 'thing'],
+				\ { 'my-metadata': v:true })
+
+			Assert True(test_utils#tree#HasNode(l:tree, 'com.example.vim.thing'))
+		End
 	End
 
 	Describe #Flatten

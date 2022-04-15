@@ -1,3 +1,5 @@
+package ca.example.vim;
+
 public class NestedClasses {
 
     public NestedClasses() {}

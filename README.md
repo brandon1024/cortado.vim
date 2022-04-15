@@ -7,6 +7,8 @@ reformat import statements. Import classes easily with the help of tag files.
 
 ![](.github/screenshot.png)
 
+<sup>Note: Neovim is not yet supported, but contributions welcome!</sup>
+
 ## Installation
 This plugin has no external dependencies, so you can easily install with your
 favourite plugin manager.
@@ -112,6 +114,17 @@ import java.util.List;
 Default:
 ```vim
 let g:java_import_wildcard_count = 0
+```
+
+## Contributing
+Contributions are welcome! Remember to write some tests for your changes.
+
+Some tests rely on the existence of a tag file. If you change sample Java files
+in `test/input/`, you'll need to regenerate a tag file. To do this, install
+[Universal Ctags](https://github.com/universal-ctags/ctags) and run (from the
+project root):
+```
+$ ctags -o test/input/tags -R --tag-relative=yes test/input
 ```
 
 ## License

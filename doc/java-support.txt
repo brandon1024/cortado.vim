@@ -56,10 +56,10 @@ Optimize/Merge Import Statements~
 	Remove duplicate or unecessary import statements. Automatically merge
 	same-package imports into a single wildcard import (when enabled).
 
-Class/Enum Auto Import~
-	Import project classes and enums by name with the help of tag files. If
-	multiple classes/enums are found, prompts the user to select which to
-	import.
+Class/Interface/Enum/Method Auto Import~
+	Import project classes, interfaces, enums and static methods by name with
+	the help of tag files. If multiple results are found, prompts the user to
+	select which to import.
 
 ================================================================================
 USAGE                                                       |java-support-usage|
@@ -95,7 +95,9 @@ COMMANDS                                                 *java-support-commands*
 	for classes with a name under the cursor (<cword>).
 
 	If there are multiple results, a popup menu is shown allowing the user to
-	select which class to import.
+	select which class to import. With the popup visible, you can use j/<Down>
+	and k/<Up> keys select a result. You can also use h/<Left> and l/<Right> to
+	show additional information.
 
 ================================================================================
 OPTIONS                                                   *java-support-options*
@@ -211,9 +213,11 @@ Classes in Base Package~
 	classname. If classes exist in the base package (and don't have an import
 	statement), the plugin won't suggest it.
 
-Nested Classes and Enums~
-	The plugin currently does not recommend imports for nested classes. This
-	will be addressed in a later version.
+Method Imports Always Static~
+	If you try to import a (non-static) instance method, the plugin will
+	suggest the import even though it's not possible to import non-static
+	methods. Doing so might mean that your class will not compile. It would be
+	a user error to import non-static methods.
 
 Dependence on ctags~
 	This plugin relies heavily on tag files. If you aren't using ctags (or

@@ -9,6 +9,9 @@ endfunction
 " Build a tree from a list of import statements `stmts` and return it. Import
 " statements must match the pattern '^\s*import\s.\+;\s*$', otherwise expect
 " undefined behaviour.
+"
+" This function makes a reasonable effort to parse an import statement. It will
+" try to split up a compound statement into individual imports.
 function! import_tree#BuildFromStatements(stmts) abort
 	let l:normalized_stmts = []
 	for stmt in a:stmts
@@ -26,13 +29,14 @@ endfunction
 " Merge `stmt` into `tree`, returning `tree`. `stmt` must be a fully-qualified
 " class, method, or enum. `meta` defines properties for the leaf node.
 "
-" This function makes a reasonable effort to parse an import statement. It will
-" try to split up a compound statement into individual imports.
-"
 " This function validates the import statement and may throw an error if the
 " statement is invalid.
 function! import_tree#Merge(tree, stmt, meta = {}) abort
-	let l:pkg_components = split(a:stmt, '\.')
+	if type(a:stmt) == v:t_list
+		let l:pkg_components = a:stmt
+	else
+		let l:pkg_components = split(a:stmt, '\.')
+	endif
 
 	if !len(l:pkg_components)
 		echoerr 'bug: empty statement given'
