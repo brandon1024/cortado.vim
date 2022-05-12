@@ -12,7 +12,7 @@ Describe tags
 
 			It should find the package statement even if it appears pretty far in file
 				Assert True(len(taglist('^PackageStatementTest$')) > 0)
-				let l:result = tags#Lookup('PackageStatementTest')
+				let l:result = java_support#tags#Lookup('PackageStatementTest')
 				Assert Equals(len(l:result), 1)
 				
 				let l:result = l:result[0]
@@ -22,17 +22,17 @@ Describe tags
 
 			It should search tags in a case sensitive manner regardless of ignorecase option
 				set ignorecase
-				let l:result = tags#Lookup('uniquecasesensitivename')
+				let l:result = java_support#tags#Lookup('uniquecasesensitivename')
 				Assert Equals(len(l:result), 1)
 
-				let l:result = tags#Lookup('UNIQUECASESENSITIVENAME')
+				let l:result = java_support#tags#Lookup('UNIQUECASESENSITIVENAME')
 				Assert Equals(len(l:result), 1)
 			End
 		End
 
 		Describe class/interface/enum/annotation imports
 			It should find a class when given a classname
-				let l:result = tags#Lookup('Simple')
+				let l:result = java_support#tags#Lookup('Simple')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -42,7 +42,7 @@ Describe tags
 			End
 
 			It should find a nested class when given a classname
-				let l:result = tags#Lookup('StaticInnerClass')
+				let l:result = java_support#tags#Lookup('StaticInnerClass')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -52,7 +52,7 @@ Describe tags
 			End
 
 			It should find an interface when given an interface name
-				let l:result = tags#Lookup('SimpleInterface')
+				let l:result = java_support#tags#Lookup('SimpleInterface')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -62,7 +62,7 @@ Describe tags
 			End
 
 			It should find a nested interface when given an interface name
-				let l:result = tags#Lookup('MyNestedInterface')
+				let l:result = java_support#tags#Lookup('MyNestedInterface')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -72,7 +72,7 @@ Describe tags
 			End
 
 			It should find an enum definition with a given name
-				let l:result = tags#Lookup('SimpleEnum')
+				let l:result = java_support#tags#Lookup('SimpleEnum')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -82,7 +82,7 @@ Describe tags
 			End
 
 			It should find a nested enum definition with a given name
-				let l:result = tags#Lookup('MyNestedEnum')
+				let l:result = java_support#tags#Lookup('MyNestedEnum')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -92,7 +92,7 @@ Describe tags
 			End
 
 			It should find an annotation definition with a given name
-				let l:result = tags#Lookup('SimpleAnnotation')
+				let l:result = java_support#tags#Lookup('SimpleAnnotation')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -102,7 +102,7 @@ Describe tags
 			End
 
 			It should find a nested annotation definition with a given name
-				let l:result = tags#Lookup('MyNestedAnnotation')
+				let l:result = java_support#tags#Lookup('MyNestedAnnotation')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -114,7 +114,7 @@ Describe tags
 
 		Describe enum/method imports
 			It should find a method with a given name
-				let l:result = tags#Lookup('myStaticMethod')
+				let l:result = java_support#tags#Lookup('myStaticMethod')
 				Assert True(len(l:result) > 0)
 
 				" find ours
@@ -124,7 +124,7 @@ Describe tags
 			End
 
 			It should find an enum with a given name
-				let l:result = tags#Lookup('ENUM_VALUE')
+				let l:result = java_support#tags#Lookup('ENUM_VALUE')
 				Assert True(len(l:result) > 0)
 
 				" find ours

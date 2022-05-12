@@ -13,12 +13,14 @@ USAGE                                                       |java-support-usage|
 OPTIONS                                                   |java-support-options|
   SORT OPTIONS                                       |java-support-sort-options|
   IMPORT OPTIONS                                   |java-support-import-options|
+  INDEX OPTIONS                                     |java-support-index-options|
 MAPPINGS                                                 |java-support-mappings|
   CREATING CUSTOM MAPPINGS               |java-support-creating-custom-mappings|
 EXTRA                                                       |java-support-extra|
   LIMITATIONS                                         |java-support-limitations|
   UNIVERSAL CTAGS                                 |java-support-universal-ctags|
   REPORTING ISSUES                               |java-support-reporting-issues|
+  INTERNAL DATA STRUCTURES               |java-support-internal-data-structures|
 
 
 ================================================================================
@@ -26,9 +28,9 @@ INTRODUCTION                                         *java-support-introduction*
 
 Java is a notoriously difficult language to work with in Vim, likely because
 fantastic purpose-built development tools (like IntelliJ and Gradle) already
-exist, making Vim seem like an obsolete tool. Vim is still extremely powerful
-for text editing and development tasks, especially with a bit of practice, but
-it's missing a few niceties that come standard in a full-fledged integrated
+exist, making Vim appear obsolete. Vim is still extremely powerful for text
+editing and development tasks, especially with a bit of practice, but it's
+missing a few niceties that come standard in a full-fledged integrated
 development environment.
 
 java-support is a Vim plugin to make working on Java projects with Vim a
@@ -43,7 +45,7 @@ the box.
 
 java-support is unobtrusive. To avoid overriding built-in or user-defined
 mappings, the plugin doesn't create any key mappings. You are left to create
-mappings that fit your workflow.
+mappings that best suit your workflow.
 
 --------------------------------------------------------------------------------
 FEATURES                                                 *java-support-features*
@@ -58,15 +60,15 @@ Optimize/Merge Import Statements~
 
 Class/Interface/Enum/Method Auto Import~
 	Import project classes, interfaces, enums and static methods by name with
-	the help of tag files. If multiple results are found, prompts the user to
-	select which to import.
+	the help of tag files. Intelligently index imported classes found in Java
+	project files, offering suggestions for classes not found in tag files.
 
 ================================================================================
 USAGE                                                       |java-support-usage|
 
 To cleanup import statements:
 >
-	:JavaSortImports
+	:JavaImportSort
 <
 
 To import a class or enum with a specific name:
@@ -79,17 +81,22 @@ To import a class or enum with a name under the cursor:
 	:JavaImportKeyword
 <
 
+To re-index (cache) references from imports in the current project:
+>
+	:JavaImportIndex
+<
+
 --------------------------------------------------------------------------------
 COMMANDS                                                 *java-support-commands*
 
-                                                              *:JavaSortImports*
-:JavaSortImports
+                                                               *:JavaImportSort*
+:JavaImportSort
 	Clean up import statements in the current buffer. Import statements are
 	removed, optimized, sorted, and then written to the buffer just below the
 	package statement (if exists).
 
                                                             *:JavaImportKeyword*
-:JavaImportKeyword [name]
+:JavaImportKeyword [{name}]
 	Search tag files for classes and enums with a specific [name]. If [name] is
 	given, searches for classes with that name. If [name] is omitted, searches
 	for classes with a name under the cursor (<cword>).
@@ -98,6 +105,34 @@ COMMANDS                                                 *java-support-commands*
 	select which class to import. With the popup visible, you can use j/<Down>
 	and k/<Up> keys select a result. You can also use h/<Left> and l/<Right> to
 	show additional information.
+
+                                                              *:JavaImportIndex*
+:JavaImportIndex[!] [{buffer}]
+	Index references from Java files in the current project.
+
+	Indexing will help offer better import suggestions by offering classes
+	that have been imported elsewhere in a project. The index is not created
+	automatically at startup; you'll need to plumb that yourself. In large
+	projects, indexing may take a while to complete.
+
+	If {buffer} is given, imports from that buffer are merged into the index.
+	Otherwise, Java files are read through directory traversal (from the cwd)
+	and merged into the index. With a bang "!", the index is written to the
+	index file (see |g:java_import_index_path|).
+
+	When indexing through directory traversal, 'wildignore' is respected.
+
+                                                       *:JavaImportIndexRecover*
+:JavaImportIndexRecover[!]
+	Recover and populate the index from the index file
+	|g:java_import_index_path|, if configured. The index from the file is
+	merged into the existing index. With a bang "!", the index file is written
+	to a index file.
+
+                                                         *:JavaImportIndexReset*
+:JavaImportIndexReset[!]
+	Clear the index. With a bang "!", the index file |g:java_import_index_path|
+	is also cleared.
 
 ================================================================================
 OPTIONS                                                   *java-support-options*
@@ -185,6 +220,38 @@ IMPORT OPTIONS                                     *java-support-import-options*
 
 There are no import options at this time.
 
+--------------------------------------------------------------------------------
+INDEX OPTIONS                                       *java-support-index-options*
+
+                                                  *'g:java_import_index_enable'*
+Enable or disable indexing features. When enabled, the plugin can scan and
+index Java files to offer better import suggestions. When disabled, indexing
+features are not used.
+
+Default:
+>
+	let g:java_import_index_enable = 1
+<
+
+                                                *'g:java_import_index_progress'*
+Enable or disable progress information when indexing. When enabled, a popup is
+shown in the bottom right corner to show which files are being indexed.
+
+Default:
+>
+	let g:java_import_index_progress = 1
+<
+
+                                                    *'g:java_import_index_path'*
+When not empty, the index is written to a file in this directory and may be used
+to load the index through |:JavaImportIndexRecover|. If empty, the index is not
+saved and must be recreated in each new session.
+
+Default:
+>
+	let g:java_import_index_path = $HOME . '.cache/java-support'
+<
+
 ================================================================================
 MAPPINGS                                                 *java-support-mappings*
 
@@ -194,15 +261,26 @@ CREATING CUSTOM MAPPINGS                 *java-support-creating-custom-mappings*
 Key mappings are not created by default, but you can add them if you wish. Here
 are some mappings that I use:
 >
-	nnoremap <silent> <leader>o :JavaSortImports<CR>
-	nnoremap <silent> <leader>i :JavaImportKeyword<CR>
+	nnoremap <silent> <leader>jo :JavaImportSort<CR>
+	nnoremap <silent> <leader>ji :JavaImportKeyword<CR>
+	nnoremap <silent> <leader>jc :JavaImportIndex<CR>
 <
+
+The possibilities don't end there. If you are feeling bold, you could
+sort imports on a BufWritePre event to clean up imports before saving, or
+configure indexing to run automatically at startup (on VimEnter event).
 
 ================================================================================
 EXTRA                                                       *java-support-extra*
 
 --------------------------------------------------------------------------------
 LIMITATIONS                                           *java-support-limitations*
+
+Unsupported Platforms~
+	This plugin is only tested in a handful of environments, notably Ubuntu
+	20.02 and macOS. This plugin is not tested in Windows. Neovim is not
+	officially supported. All contributions to support additional environments
+	are welcome!
 
 Illegal Java Syntax~
 	If you're editing a particularly bad Java file--one that doesn't adhere to
@@ -229,11 +307,10 @@ Dependence on ctags~
 UNIVERSAL CTAGS                                   *java-support-universal-ctags*
 
 This plugin uses tag files to locate classes and build fully-qualified class
-names. Without it, you won't be able to import classes automatically. If you
-haven't worked with *universal-ctags* before, it'll change your life. It's also
-pretty easy to use. I'll give a bit of information in this section, but you
-should definitely read through the ctags documentation for a more comprehensive
-overview.
+names. Without it, auto import features will be limited. If you haven't worked
+with *universal-ctags* before, it'll change your life. It's also pretty easy to
+use. I'll give a bit of information in this section, but you should definitely
+read through the ctags documentation for a more comprehensive overview.
 
 A tag file is a sorted list of keywords with information on their location. If
 you take a peek at a tag file, you'll see that each line is a tab-delimited
@@ -279,6 +356,84 @@ accept patches and contributions of any form! If you like the plugin, star the
 repo :-)
 
 https://github.com/brandon1024/java-support.vim
+
+--------------------------------------------------------------------------------
+INTERNAL DATA STRUCTURES                 *java-support-internal-data-structures*
+
+If you're planning to contribute to the project, it might be handy to know a
+bit about how import statements are represented internally in this plugin.
+Import trees and index structures are non-trivial, but this should help.
+
+An import tree is a tree data structure representing the import statements of a
+Java file (or multiple Java files). The tree is a dictionary of dictionaries.
+At each level in the tree, there's a 'leaf' and 'children' key. The 'leaf' key
+represents all classes in a particular package. The 'children' key is all
+sub-packages.
+
+Each key in a 'children' dictionary is a single package component. For example,
+at the root of the tree for the class 'java.util.Collections', a key 'java'
+would exist. The value would be another tree, with a 'children' dictionary with
+a key 'util', and so on.
+
+Each key in a 'leaf' dictionary is a class name. The value is some metadata
+associated with that import, like whether it's a static import. Star imports
+are permitted, the key being '*'.
+
+The following example shows the tree for a single import
+'java.util.Collections':
+>
+	{
+	  'leaf': {},
+	  'children': {
+	    'java': {
+	      'leaf': {},
+	      'children': {
+	        'util': {
+	          'leaf': {
+	            'Collections': { 's': v:false }
+	          },
+	          'children': {}
+	        }
+	      }
+	    }
+	  }
+	}
+<
+
+The import tree will grow in depth and breadth as more import statements are
+merged into the tree. The process of parsing an import statement from a Java
+file into a form that can be inserted into a tree is called 'normalization'.
+
+Import trees can be flattened into a list of fully-qualified class names. This
+is useful when writing optimized import statements back to a buffer. This
+process is pretty straightforward and involves traversing the tree and
+collecting the path to each leaf node into a list.
+
+Depending on how the user has configured the plugin, wildcard imports may be
+adjusted during this flattening process. Some projects enforce coding
+guidelines that ban the use of wildcard imports, so these imports may be
+removed. If wildcards are allowed, they might get merged into a single import
+above a certain number. There are other options as well.
+
+An index is an alternate representation of an import tree that can be used to
+quickly find the fully-qualified path of a particular class. Indexing a Java
+file or a project will produce an index that can be used when suggesting
+imports. The plugin uses an index as a cache.
+
+An index is a dictionary where each key is a class name. The value is a list of
+dictionaries. Each dictionary is some metadata for that import (fully-qualified
+path, static/non-static import, etc.).
+
+The following example shows the index for a single import
+'java.util.Collections':
+>
+	{
+	  'Collections': [{
+	    'fq_name': ['java', 'util', 'Collections'],
+	    'meta': { 's': v:false }
+	  }]
+	}
+<
 
 =============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:
