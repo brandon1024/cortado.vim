@@ -8,9 +8,9 @@ Describe sort
 		It should not run in buffers without the 'java' filetype
 			enew!
 			read test/input/Simple.java
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
 			Assert Equals(len(l:import_lines), 2)
 
 			" should not have sorted
@@ -21,9 +21,9 @@ Describe sort
 		It should run in buffers with the 'java' filetype
 			edit! test/input/Simple.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
 			Assert Equals(len(l:import_lines), 2)
 
 			" should have sorted
@@ -34,18 +34,18 @@ Describe sort
 		It should filter duplicate imports
 			edit! test/input/DuplicateImports1.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, 'ca\.example\.vim\.internal\.ImportedClass')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, 'ca\.example\.vim\.internal\.ImportedClass')
 			Assert Equals(len(l:import_lines), 1)
 		End
 
 		It should group imports according to default configuration
 			edit! test/input/StaticImports.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
 
 			" first should be static imports
 			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^import static')
@@ -67,9 +67,9 @@ Describe sort
 		It should insert import statements after package statement
 			edit! test/input/Simple.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:lines = buffer#FindLinesMatchingPattern(1, '^import\|^package')
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import\|^package')
 			Assert Equals(len(l:lines), 3)
 
 			Assert Equals(l:lines[0], 'package ca.example.vim;')
@@ -83,7 +83,7 @@ Describe sort
 
 			Assert True(match(getline(1), '^$') >= 0)
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
 			Assert True(match(getline(1), '^package') >= 0)
 		End
@@ -91,9 +91,9 @@ Describe sort
 		It should insert empty line between groups if configured
 			edit! test/input/StaticImports.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import\|^$')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import\|^$')
 
 			" single empty line
 			let [l:count, l:import_lines] = test_utils#lists#FilterWhileMatching(l:import_lines, '^$')
@@ -129,14 +129,14 @@ Describe sort
 
 			edit! test/input/Wildcard.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
 			" ensure that wildcard import was removed
-			let l:idx = buffer#FindLineMatchingPattern(1, '^import java\.util\.\*;')
+			let l:idx = java_support#buffer#FindLineMatchingPattern('%', 1, '^import java\.util\.\*;')
 			Assert Equals(l:idx, 0)
 
 			" ensure other java.util imports were not removed
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import java\.util')
 			Assert Equals(len(l:import_lines), 3)
 		End
 
@@ -145,10 +145,10 @@ Describe sort
 
 			edit! test/input/Wildcard.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
 			" ensure that wildcard import was not removed
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import java\.util')
 			Assert Equals(len(l:import_lines), 1)
 		End
 
@@ -157,29 +157,29 @@ Describe sort
 
 			edit! test/input/Wildcard.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
 			" ensure java util imports were merged
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import java\.util')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import java\.util')
 			Assert Equals(len(l:import_lines), 1)
 
 			" ensure ca.example.vim imports were merged
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import ca\.example\.vim\.\*')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.\*')
 			Assert Equals(len(l:import_lines), 1)
 
 			" ensure ca.example.vim.internal imports were not merged
-			let l:import_lines = buffer#FindLinesMatchingPattern(1, '^import ca\.example\.vim\.internal')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.internal')
 			Assert Equals(len(l:import_lines), 2)
 		End
 
 		It should not merge imports where a class name matches a component of a package for another import
 			edit! test/input/ImportClassPackageNameMatchBug.java
 
-			call sort#JavaSortImports()
+			call java_support#sort#JavaSortImports()
 
 			" ensure imports were not collapsed into one
-			Assert True(buffer#FindLineMatchingPattern(1, 'import ca.example.vim.Internal;') > 0)
-			Assert True(buffer#FindLineMatchingPattern(1, 'import ca.example.vim.Internal.Interface;') > 0)
+			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.vim.Internal;') > 0)
+			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.vim.Internal.Interface;') > 0)
 		End
 	End
 End

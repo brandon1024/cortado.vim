@@ -1,5 +1,5 @@
 Describe buffer
-	Describe #FindLinesMatchingPattern
+	Describe #FindLineMatchingPattern
 		Before
 			%bwipeout!
 		End
@@ -7,37 +7,48 @@ Describe buffer
 		It should find first occurrence of a pattern in the buffer
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#FindLineMatchingPattern(3, '^import static')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', 3, '^import static')
 			Assert Equals(l:lnum, 3)
 		End
 
 		It should return lnum only if the pattern matches ahead of the given lnum
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#FindLineMatchingPattern(4, '^import static')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', 4, '^import static')
 			Assert Equals(l:lnum, 0)
 		End
 
 		It should return zero if no line matching pattern found
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#FindLineMatchingPattern(4, 'what is this?')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', 4, 'what is this?')
 			Assert Equals(l:lnum, 0)
 		End
 
 		It should return zero if the line number is negative or zero
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#FindLineMatchingPattern(-1, 'public')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', -1, 'public')
 			Assert Equals(l:lnum, 0)
-			let l:lnum = buffer#FindLineMatchingPattern(0, 'public')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', 0, 'public')
 			Assert Equals(l:lnum, 0)
 		End
 
 		It should return zero if the line number is greater than the number of lines in the buffer
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#FindLineMatchingPattern(100, 'public')
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('%', 100, 'public')
+			Assert Equals(l:lnum, 0)
+		End
+
+		It should find lines matching in specific buffer
+			edit test/input/StaticImports.java
+			vsp test/input/ImportStaticMethod.java
+
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('test/input/StaticImports.java', 3, '^import static')
+			Assert Equals(l:lnum, 3)
+
+			let l:lnum = java_support#buffer#FindLineMatchingPattern('test/input/ImportStaticMethod.java', 100, 'public')
 			Assert Equals(l:lnum, 0)
 		End
 	End
@@ -50,7 +61,7 @@ Describe buffer
 		It should return all lines matching given pattern
 			edit test/input/StaticImports.java
 
-			let l:lines = buffer#FindLinesMatchingPattern(1, 'public')
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('%', 1, 'public')
 			Assert Equals(len(l:lines), 2)
 
 			Assert Equals(l:lines[0], 'public class StaticImports {')
@@ -60,24 +71,51 @@ Describe buffer
 		It should return empty list if no lines match pattern
 			edit test/input/StaticImports.java
 
-			let l:lines = buffer#FindLinesMatchingPattern(1, 'publics')
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('%', 1, 'publics')
 			Assert Equals(len(l:lines), 0)
+		End
+
+		It should return all lines matching given pattern in specific buffer
+			edit test/input/StaticImports.java
+			vsp test/input/ImportStaticMethod.java
+
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('test/input/StaticImports.java', 1, 'public')
+			Assert Equals(len(l:lines), 2)
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('test/input/ImportStaticMethod.java', 1, 'ca.example.vim')
+			Assert Equals(len(l:lines), 3)
 		End
 	End
 
 	Describe #FilterLinesMatchingPattern
+		Before
+			%bwipeout!
+		End
+
 		It should correctly remove and return lines matching the given pattern
 			edit test/input/StaticImports.java
 
 			let l:initial_linecount = line('$')
 
-			let l:lines = buffer#FilterLinesMatchingPattern(1, 'import')
+			let l:lines = java_support#buffer#FilterLinesMatchingPattern('%', 1, 'import')
 			Assert Equals(len(l:lines), 8)
 
-			let l:lines = buffer#FindLinesMatchingPattern(1, 'import')
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('%', 1, 'import')
 			Assert Equals(len(l:lines), 0)
 
 			Assert Equals(l:initial_linecount - line('$'), 8)
+		End
+
+		It should correctly remove and return lines matching the given pattern for specific buffer
+			edit test/input/StaticImports.java
+			vsp test/input/ImportStaticMethod.java
+
+			let l:lines = java_support#buffer#FilterLinesMatchingPattern('test/input/StaticImports.java', 1, 'import')
+			Assert Equals(len(l:lines), 8)
+
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('test/input/StaticImports.java', 1, 'import')
+			Assert Equals(len(l:lines), 0)
+			let l:lines = java_support#buffer#FindLinesMatchingPattern('test/input/ImportStaticMethod.java', 1, 'import')
+			Assert Equals(len(l:lines), 2)
 		End
 	End
 
@@ -89,14 +127,14 @@ Describe buffer
 		It should truncate all lines up to stopping condition pattern and return line number of stopping condition pattern occurrence
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#TruncateToPattern(1, '.*', 'public')
+			let l:lnum = java_support#buffer#TruncateToPattern(1, '.*', 'public')
 			Assert Equals(l:lnum, 1)
 		End
 
 		It should return 0 if stopping condition pattern never found
 			edit test/input/StaticImports.java
 
-			let l:lnum = buffer#TruncateToPattern(1, '.*', 'no exists')
+			let l:lnum = java_support#buffer#TruncateToPattern(1, '.*', 'no exists')
 			Assert Equals(l:lnum, 0)
 		End
 	End
@@ -109,24 +147,24 @@ Describe buffer
 		It should insert lines at given lnum in correct order
 			edit test/input/StaticImports.java
 			
-			call buffer#WriteLines(3, ['my-test-1', 'my-test-2'])
+			call java_support#buffer#WriteLines(3, ['my-test-1', 'my-test-2'])
 
-			let l:num1 = buffer#FindLineMatchingPattern(1, 'my-test-1')
+			let l:num1 = java_support#buffer#FindLineMatchingPattern('%', 1, 'my-test-1')
 			Assert Equals(4, l:num1)
 
-			let l:num2 = buffer#FindLineMatchingPattern(1, 'my-test-2')
+			let l:num2 = java_support#buffer#FindLineMatchingPattern('%', 1, 'my-test-2')
 			Assert Equals(5, l:num2)
 		End
 
 		It should flatten the list of lines
 			edit test/input/StaticImports.java
 			
-			call buffer#WriteLines(3, [['my-test-1'], ['my-test-2']])
+			call java_support#buffer#WriteLines(3, [['my-test-1'], ['my-test-2']])
 
-			let l:num1 = buffer#FindLineMatchingPattern(1, 'my-test-1')
+			let l:num1 = java_support#buffer#FindLineMatchingPattern('%', 1, 'my-test-1')
 			Assert Equals(4, l:num1)
 
-			let l:num2 = buffer#FindLineMatchingPattern(1, 'my-test-2')
+			let l:num2 = java_support#buffer#FindLineMatchingPattern('%', 1, 'my-test-2')
 			Assert Equals(5, l:num2)
 		End
 	End

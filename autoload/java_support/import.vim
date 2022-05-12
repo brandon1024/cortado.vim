@@ -1,3 +1,47 @@
+" Import a class with name `keyword`. If `keyword` is empty or unset, default
+" to keyword under cursor (<cword>).
+" If a keyword is provided as a function argument, the first result is
+" imported. Otherwise, a popup menu is shown allowing the user to select which
+" class to import.
+function! java_support#import#JavaImportKeyword(keyword = '') abort
+	" ensure this is a java file
+	if &filetype != 'java'
+		echohl WarningMsg |
+			\ echo 'java-support.vim: cannot import class: unexpected filetype "' . &filetype . '"' |
+			\ echohl None
+		return
+	endif
+
+	if empty(tagfiles())
+		echohl WarningMsg |
+			\ echo 'java-support.vim: cannot import class: missing a tag file' |
+			\ echohl None
+	endif
+
+	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
+	if l:keyword == ''
+		return
+	endif
+
+	" make sure the keyword is a valid java identifier
+	if !java_support#java#IsValidIdentifier(l:keyword)
+		echohl WarningMsg |
+			\ echo 'java-support.vim: keyword "' . keyword . '" is not a valid Java identifier' |
+			\ echohl None
+		return
+	endif
+
+	let l:import_tag_results = s:FetchResults(l:keyword)
+	if empty(l:import_tag_results)
+		echohl WarningMsg |
+			\ echo 'java-support.vim: cannot import, nothing found for keyword "' . l:keyword . '"' |
+			\ echohl None
+		return
+	endif
+
+	call s:ImportFromSelection(l:keyword, l:import_tag_results)
+endfunction
+
 " Get the keyword (<cword>) under the cursor.
 function! s:GetKeywordUnderCursor() abort
 	return expand('<cword>')
@@ -5,7 +49,7 @@ endfunction
 
 " Build popup entry strings for the given `tag_results`.
 " `mode` is used to select a format.
-function! s:BuildPopupEntries(tag_results, mode)
+function! s:BuildPopupEntries(tag_results, mode) abort
 	let l:popup_entries = []
 	for result in a:tag_results
 		let l:entry = ''
@@ -17,7 +61,7 @@ function! s:BuildPopupEntries(tag_results, mode)
 		elseif a:mode == 2
 			let l:entry = ' ' . result.fname . ' '
 		else
-			echoerr 'bug: unexpected mode ' . a:mode
+			throw 'bug: unexpected mode ' . a:mode
 		endif
 
 		call add(l:popup_entries, l:entry)
@@ -27,7 +71,7 @@ function! s:BuildPopupEntries(tag_results, mode)
 endfunction
 
 " Rotate the entries in the popup, and return `mode`.
-function! s:RotatePopupEntries(id, mode, tag_results)
+function! s:RotatePopupEntries(id, mode, tag_results) abort
 	let l:mode = a:mode < 0 ? 2 : (a:mode > 2 ? 0 : a:mode)
 	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:mode)
 	call popup_settext(a:id, l:popup_entries)
@@ -45,7 +89,7 @@ function! s:ImportFromSelection(keyword, tag_results) abort
 		endif
 
 		if a:result > len(a:tag_results)
-			echoerr 'bug: unexpected result in popup callback "' . a:result. '"'
+			throw 'bug: unexpected result in popup callback "' . a:result. '"'
 		endif
 
 		call s:ImportClass(a:tag_results[a:result - 1])
@@ -84,55 +128,22 @@ endfunction
 
 " Import a class with the given fully-qualified class name.
 function! s:ImportClass(tag_result) abort
-	let l:trees = import_tree#BuildFromBuffer(v:true)
-	call import_tree#Merge(l:trees, a:tag_result.fq_name, { 's': a:tag_result.s })
-	call sort#JavaSortImportsTrees(l:trees)
+	let l:trees = java_support#import_tree#BuildFromBuffer('%', v:true)
+	call java_support#import_tree#Merge(l:trees, a:tag_result.fq_name, { 's': a:tag_result.s })
+	call java_support#sort#JavaSortImportsTrees(l:trees)
 
 	echo 'imported "' . join(a:tag_result.fq_name, '.') . '"'
 endfunction
 
-" Import a class with name `keyword`. If `keyword` is empty or unset, default
-" to keyword under cursor (<cword>).
-" If a keyword is provided as a function argument, the first result is
-" imported. Otherwise, a popup menu is shown allowing the user to select which
-" class to import.
-function! import#JavaImportKeyword(keyword = '') abort
-	" ensure this is a java file
-	if &filetype != 'java'
-		echohl WarningMsg |
-			\ echo 'cannot import class: unexpected filetype "' . &filetype . '"' |
-			\ echohl None
-		return
-	endif
+" Fetch import suggestion results from tags and from the index (if enabled).
+function! s:FetchResults(keyword) abort
+	let l:results = java_support#tags#Lookup(a:keyword)
 
-	if !len(tagfiles())
-		echohl WarningMsg |
-			\ echo 'cannot import class: missing a tag file' |
-			\ echohl None
-		return
-	endif
+	for indexed in java_support#index#Get(a:keyword)
+		call add(l:results, { 'type': 'indexed', 's': indexed.meta.s,
+			\ 'fq_name': indexed.fq_name, 'fname': 'unknown' })
+	endfor
 
-	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
-	if l:keyword == ''
-		return
-	endif
-
-	" make sure the keyword is a valid java identifier
-	if !util#IsValidJavaIdentifierComponent(l:keyword)
-		echohl WarningMsg |
-			\ echo 'keyword "' . keyword . '" is not a valid Java identifier' |
-			\ echohl None
-		return
-	endif
-
-	let l:import_tag_results = tags#Lookup(l:keyword)
-	if !len(l:import_tag_results)
-		echohl WarningMsg |
-			\ echo 'cannot import class: no classes found for keyword "' . l:keyword . '"' |
-			\ echohl None
-		return
-	endif
-
-	call s:ImportFromSelection(l:keyword, l:import_tag_results)
+	return l:results
 endfunction
 
