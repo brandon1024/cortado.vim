@@ -43,8 +43,8 @@ like whether it's a class or enum).
 
 You can add a mapping to make your life a bit easier:
 ```vim
-nnoremap <silent> <leader>jo :JavaSortImports<CR>
-nnoremap <silent> <leader>ji :JavaImportKeyword<CR>
+nnoremap <silent> <C-i> :JavaImportKeyword<CR>
+nnoremap <silent> <leader>jo :JavaImportSort<CR>
 nnoremap <silent> <leader>jc :JavaImportIndex<CR>
 ```
 

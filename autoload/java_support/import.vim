@@ -12,12 +12,6 @@ function! java_support#import#JavaImportKeyword(keyword = '') abort
 		return
 	endif
 
-	if empty(tagfiles())
-		echohl WarningMsg |
-			\ echo 'java-support.vim: cannot import class: missing a tag file' |
-			\ echohl None
-	endif
-
 	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
 	if l:keyword == ''
 		return
@@ -131,8 +125,6 @@ function! s:ImportClass(tag_result) abort
 	let l:trees = java_support#import_tree#BuildFromBuffer('%', v:true)
 	call java_support#import_tree#Merge(l:trees, a:tag_result.fq_name, { 's': a:tag_result.s })
 	call java_support#sort#JavaSortImportsTrees(l:trees)
-
-	echo 'imported "' . join(a:tag_result.fq_name, '.') . '"'
 endfunction
 
 " Fetch import suggestion results from tags and from the index (if enabled).
