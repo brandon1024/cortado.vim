@@ -3,6 +3,8 @@
 " If a keyword is provided as a function argument, the first result is
 " imported. Otherwise, a popup menu is shown allowing the user to select which
 " class to import.
+" If 'keyword' is empty and <cword> expands to empty, the imports in the
+" current buffer are sorted.
 function! java_support#import#JavaImportKeyword(keyword = '') abort
 	" ensure this is a java file
 	if &filetype != 'java'
@@ -14,6 +16,7 @@ function! java_support#import#JavaImportKeyword(keyword = '') abort
 
 	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
 	if l:keyword == ''
+		call java_support#sort#JavaSortImports()
 		return
 	endif
 
@@ -96,10 +99,6 @@ function! s:ImportFromSelection(keyword, tag_results) abort
 		elseif a:key == 'h' || a:key == "\<Left>"
 			let l:state = s:RotatePopupEntries(a:id, l:state - 1, a:tag_results)
 			return 1
-		elseif a:key == 'j'
-			return popup_filter_menu(a:id, "\<Down>")
-		elseif a:key == 'k'
-			return popup_filter_menu(a:id, "\<Up>")
 		elseif a:key == "\<Tab>"
 			return popup_filter_menu(a:id, "\<CR>")
 		else
