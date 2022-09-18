@@ -1,0 +1,28 @@
+Describe Import
+	After
+		%bwipeout!
+	End
+
+	Describe #JavaImportKeyword
+		It should sort imports if no classname provided and no keyword under cursor
+			edit! test/input/Simple.java
+
+			" position the cursor at the end of the file so that <cword> expands
+			" to empty string
+			call cursor(line('$'), 0)
+
+			" sanity check
+			Assert Equals(expand('<cword>'), '')
+
+			call java_support#import#JavaImportKeyword()
+
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
+			Assert Equals(len(l:import_lines), 2)
+
+			" should have sorted
+			Assert Equals(l:import_lines[0], 'import ca.example.vim.external.Interface;')
+			Assert Equals(l:import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
+		End
+	End
+End
+
