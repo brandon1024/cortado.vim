@@ -28,10 +28,7 @@ endfunction
 function! java_support#sort#JavaSortImports() abort
 	" ensure this is a java file
 	if &filetype != 'java'
-		echohl WarningMsg |
-			\ echo 'java-support.vim: cannot sort imports: unexpected filetype "' . &filetype . '"' |
-			\ echohl None
-		return
+		return java_support#util#Warn('cannot sort imports: unexpected filetype "' . &filetype . '"')
 	endif
 
 	call java_support#sort#JavaSortImportsTrees(java_support#import_tree#BuildFromBuffer('%', v:true))

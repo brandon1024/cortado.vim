@@ -9,20 +9,15 @@
 " traversal from the cwd.
 function! java_support#index#Load(save, recover, buffer = v:null) abort
 	if !g:java_import_index_enable
-		echohl WarningMsg |
-			\ echo 'java-support.vim: indexing features are disabled' |
-			\ echohl None
-		return
+		return java_support#util#Warn('indexing features are disabled')
 	endif
 
 	" lmake sure the index file exists
 	let l:index_file_path = g:java_import_index_path . '/.idx'
 	if !empty(g:java_import_index_path)
 		if !mkdir(g:java_import_index_path, "p")
-			echohl WarningMsg |
-				\ echo 'java-support.vim: failed to create index save location "' . g:java_import_index_path . '"' |
-				\ echohl None
-			return
+			return java_support#util#Warn('failed to create index save location "'
+				\ . g:java_import_index_path . '"')
 		endif
 
 		" create the file
@@ -30,10 +25,7 @@ function! java_support#index#Load(save, recover, buffer = v:null) abort
 	endif
 
 	if a:save && empty(g:java_import_index_path)
-		echohl WarningMsg |
-			\ echo 'java-support.vim: index file location unset (g:java_import_index_save)' |
-			\ echohl None
-		return
+		return java_support#util#Warn('index file location unset (g:java_import_index_save)')
 	endif
 
 	let l:progress_handle = java_support#progress#Show()
@@ -64,10 +56,7 @@ endfunction
 " if configured (clears the cache).
 function! java_support#index#Reset(save) abort
 	if a:save && empty(g:java_import_index_path)
-		echohl WarningMsg |
-			\ echo 'java-support.vim: index file location unset (g:java_import_index_save)' |
-			\ echohl None
-		return
+		return java_support#util#Warn('index file location unset (g:java_import_index_save)')
 	endif
 
 	call s:CommitIndexTree(java_support#import_tree#BuildEmpty(),

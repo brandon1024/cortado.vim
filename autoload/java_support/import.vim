@@ -8,10 +8,7 @@
 function! java_support#import#JavaImportKeyword(keyword = '') abort
 	" ensure this is a java file
 	if &filetype != 'java'
-		echohl WarningMsg |
-			\ echo 'java-support.vim: cannot import class: unexpected filetype "' . &filetype . '"' |
-			\ echohl None
-		return
+		return java_support#util#Warn('cannot import class: unexpected filetype "' . &filetype . '"')
 	endif
 
 	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
@@ -22,18 +19,12 @@ function! java_support#import#JavaImportKeyword(keyword = '') abort
 
 	" make sure the keyword is a valid java identifier
 	if !java_support#java#IsValidIdentifier(l:keyword)
-		echohl WarningMsg |
-			\ echo 'java-support.vim: keyword "' . keyword . '" is not a valid Java identifier' |
-			\ echohl None
-		return
+		return java_support#util#Warn('keyword "' . keyword . '" is not a valid Java identifier')
 	endif
 
 	let l:import_tag_results = s:FetchResults(l:keyword)
 	if empty(l:import_tag_results)
-		echohl WarningMsg |
-			\ echo 'java-support.vim: cannot import, nothing found for keyword "' . l:keyword . '"' |
-			\ echohl None
-		return
+		return java_support#util#Warn('cannot import, nothing found for keyword "' . l:keyword . '"')
 	endif
 
 	call s:ImportFromSelection(l:keyword, l:import_tag_results)
@@ -130,11 +121,43 @@ endfunction
 function! s:FetchResults(keyword) abort
 	let l:results = java_support#tags#Lookup(a:keyword)
 
+	let l:indexed_results = []
 	for indexed in java_support#index#Get(a:keyword)
-		call add(l:results, { 'type': 'indexed', 's': indexed.meta.s,
+		call add(l:indexed_results, { 'type': 'indexed', 's': indexed.meta.s,
 			\ 'fq_name': indexed.fq_name, 'fname': 'unknown' })
 	endfor
 
-	return l:results
+	" sort results by kind
+	let l:results = sort(l:results, function('java_support#import#ResultComparator'))
+	let l:indexed_results = sort(l:indexed_results, function('java_support#import#ResultComparator'))
+
+	return java_support#import#MergeFilterDuplicateResults(l:results, l:indexed_results)
+endfunction
+
+" A comparator for results. Used to sort results in the following order:
+" - kind: classes (c,i,a)
+" - kind: enums (g,e)
+" - kind: methods (m)
+" - kind: indexed
+" - kind: everything else
+function! java_support#import#ResultComparator(result1, result2) abort
+	let l:recognized_kinds = ['indexed', 'm', 'e', 'g', 'a', 'i', 'c']
+	let l:p1 = index(l:recognized_kinds, a:result1['type'])
+	let l:p2 = index(l:recognized_kinds, a:result2['type'])
+
+	return (l:p1 == l:p2) ? 0 : (l:p1 < l:p2 ? 1 : -1)
+endfunction
+
+" Filter indexed imports that are duplicates of tag imports.
+function! java_support#import#MergeFilterDuplicateResults(tag_results, index_results) abort
+	let l:hashed_tag_results = {}
+	for tag_result in a:tag_results
+		let l:hashed_tag_results[string(tag_result.fq_name)] = v:true
+	endfor
+
+	call filter(a:index_results,
+		\ { idx, val -> !has_key(l:hashed_tag_results, string(val.fq_name)) })
+
+	return extend(a:tag_results, a:index_results)
 endfunction
 
