@@ -101,3 +101,10 @@ function! s:InvokeUnlessIgnored(file_path, callback)
 	call a:callback(a:file_path)
 endfunction
 
+" Print a warning message.
+function! java_support#util#Warn(message) abort
+	echohl WarningMsg |
+		\ echo 'java-support.vim: ' . a:message |
+		\ echohl None
+endfunction
+

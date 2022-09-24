@@ -24,5 +24,47 @@ Describe Import
 			Assert Equals(l:import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
 		End
 	End
+
+	Describe #ResultComparator
+		It should sort results by kind
+			let l:results = [
+				\ { 'type': 'indexed', 'val': 9 },
+				\ { 'type': 'c', 'val': 0 },
+				\ { 'type': 'm', 'val': 8 },
+				\ { 'type': 'c', 'val': 1 },
+				\ { 'type': 'e', 'val': 6 },
+				\ { 'type': 'g', 'val': 5 },
+				\ { 'type': 'e', 'val': 7 },
+				\ { 'type': 'a', 'val': 4 },
+				\ { 'type': 'i', 'val': 3 },
+				\ { 'type': 'indexed', 'val': 10 },
+				\ { 'type': 'unknown', 'val': 11 },
+				\ { 'type': 'c', 'val': 2 },
+			\ ]
+
+			let l:sorted = sort(l:results, function('java_support#import#ResultComparator'))
+			for i in range(len(l:results))
+				Assert Equals(l:sorted[i]['val'], i)
+			endfor
+		End
+	End
+
+	Describe #MergeFilterDuplicateResults
+		It should filter indexed results that exist in the tag results
+			let l:results = [
+				\ { 'fq_name': ['com', 'example', 'vim'] },
+				\ { 'fq_name': ['com', 'example', 'vim1'] },
+			\ ]
+			let l:index_results = [
+				\ { 'fq_name': ['com', 'example', 'vim1'] },
+			\ ]
+
+			let l:filtered = java_support#import#MergeFilterDuplicateResults(l:results, l:index_results)
+			Assert Equals(len(l:filtered), 2)
+			for i in range(len(l:filtered))
+				Assert Equals(l:filtered[i].fq_name, l:results[i].fq_name)
+			endfor
+		End
+	End
 End
 
