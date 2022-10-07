@@ -21,6 +21,8 @@ function! java_support#plugin#Command(cmd, ...) abort
 		elseif l:subcommand == 'clear'
 			call java_support#index#Clear()
 		endif
+	elseif a:cmd == 'insert-var'
+		call java_support#templates#InsertLocalVariable()
 	endif
 endfunction
 

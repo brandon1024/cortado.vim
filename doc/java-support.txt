@@ -14,6 +14,7 @@ OPTIONS                                                   |java-support-options|
   SORT OPTIONS                                       |java-support-sort-options|
   IMPORT OPTIONS                                   |java-support-import-options|
   INDEX OPTIONS                                     |java-support-index-options|
+  MISC OPTIONS                                       |java-support-misc-options|
 MAPPINGS                                                 |java-support-mappings|
   CREATING CUSTOM MAPPINGS               |java-support-creating-custom-mappings|
 EXTRA                                                       |java-support-extra|
@@ -58,10 +59,13 @@ Optimize/Merge Import Statements~
 	Remove duplicate or unecessary import statements. Automatically merge
 	same-package imports into a single wildcard import (when enabled).
 
-Class/Interface/Enum/Method Auto Import~
+Class/Interface/Enum/Method Import~
 	Import project classes, interfaces, enums and static methods by name with
 	the help of tag files. Intelligently index imported classes found in Java
 	project files, offering suggestions for classes not found in tag files.
+
+Introduce Local Variable Declaration~
+	Insert a local variable declaration under the cursor.
 
 ================================================================================
 USAGE                                                       |java-support-usage|
@@ -84,6 +88,11 @@ To import a class or enum with a name under the cursor:
 To re-index (cache) references from imports in the current project (cwd):
 >
 	:Java index
+<
+
+To insert a local variable declaration under the current line:
+>
+	:Java insert-var
 <
 
 --------------------------------------------------------------------------------
@@ -135,6 +144,16 @@ COMMANDS                                                 *java-support-commands*
 	|g:java_import_index_path| and merged into the index.
 
 	If {subcommand} is 'clear', the index is cleared.
+
+:Java insert-var
+	Insert a local variable declaration and assignment at the beginning of the
+	line, placing the cursor at the variable name. This will insert 'final var
+	= ' at the beginning of the line.
+
+	This plugin does not know anything about the lexical structure of Java
+	source code. It knows nothing about your Java version, nor does it have any
+	knowledge of any types. This is merely a convenience feature for Java 11+
+	sources, leveraging type inference features ('var' keyword).
 
 ================================================================================
 OPTIONS                                                   *java-support-options*
@@ -244,6 +263,18 @@ Default:
 	let g:java_import_index_path = $HOME . '.cache/java-support/.idx'
 <
 
+--------------------------------------------------------------------------------
+MISC OPTIONS                                         *java-support-misc-options*
+
+                                             *'g:java_insert_var_declare_final'*
+When inserting local variable declarations, configure whether to create variable
+as 'final'.
+
+Default:
+>
+	let g:java_insert_var_declare_final = 1
+<
+
 ================================================================================
 MAPPINGS                                                 *java-support-mappings*
 
@@ -255,6 +286,8 @@ are some mappings that I use:
 >
 	nnoremap <silent> <C-i> :Java import<CR>
 	nnoremap <silent> <leader>jc :Java index<CR>
+	nnoremap <silent> <F5> :Java insert-var<CR>
+	inoremap <silent> <F5> <C-o>:Java insert-var<CR>
 <
 
 The possibilities don't end there. If you are feeling bold, you could

@@ -1,14 +1,12 @@
 !_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
 !_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
-!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
 !_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
 !_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
 !_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
-!_TAG_PROC_CWD	/Users/brandon/.dotfiles/.vim/pack/plugins/opt/java-support.vim/	//
 !_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
 !_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
 !_TAG_PROGRAM_URL	https://ctags.io/	/official site/
-!_TAG_PROGRAM_VERSION	5.9.0	//
+!_TAG_PROGRAM_VERSION	0.0.0	//
 CaseSensitiveSearchTest	CaseSensitiveSearchTest.java	/^public class CaseSensitiveSearchTest {$/;"	c
 CaseSensitiveSearchTestEnum	CaseSensitiveSearchTest.java	/^    public enum CaseSensitiveSearchTestEnum {$/;"	g	class:CaseSensitiveSearchTest
 DuplicateImports1	DuplicateImports1.java	/^    public DuplicateImports1(ImportedClass c, Interface i) {}$/;"	m	class:DuplicateImports1
@@ -19,6 +17,7 @@ ImportClassPackageNameMatchBug	ImportClassPackageNameMatchBug.java	/^public clas
 ImportStaticMethod	ImportStaticMethod.java	/^public class ImportStaticMethod {$/;"	c
 InnerClass	NestedClasses.java	/^        public InnerClass() {}$/;"	m	class:NestedClasses.InnerClass
 InnerClass	NestedClasses.java	/^    public class InnerClass {$/;"	c	class:NestedClasses
+InsertVariable	InsertVariable.java	/^public class InsertVariable {$/;"	c
 MY_NESTED_ENUM_VAL	NestedEnums.java	/^        MY_NESTED_ENUM_VAL$/;"	e	enum:NestedEnums.MyNestedEnum	file:
 MyNestedAnnotation	NestedAnnotations.java	/^    public @interface MyNestedAnnotation {}$/;"	a	class:NestedAnnotations
 MyNestedEnum	NestedEnums.java	/^    public enum MyNestedEnum {$/;"	g	class:NestedEnums
@@ -59,4 +58,5 @@ ca.example.vim	StaticImports.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	Wildcard.java	/^package ca.example.vim;$/;"	p
 getSimpleInterface	SimpleInterface.java	/^	void getSimpleInterface(ImportedClass val1, Interface val2);$/;"	m	interface:SimpleInterface
 myStaticMethod	ImportStaticMethod.java	/^    public static myStaticMethod(ImportedClass c, Interface i) {}$/;"	m	class:ImportStaticMethod
+send	InsertVariable.java	/^    protected HttpResponse<String> send(final HttpRequest.Builder requestPrototype) throws IOExc/;"	m	class:InsertVariable
 uniquecasesensitivename	CaseSensitiveSearchTest.java	/^    public void uniquecasesensitivename() {$/;"	m	class:CaseSensitiveSearchTest
