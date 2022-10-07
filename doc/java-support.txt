@@ -68,37 +68,38 @@ USAGE                                                       |java-support-usage|
 
 To cleanup import statements:
 >
-	:JavaImportSort
+	:Java cleanup-imports
 <
 
 To import a class or enum with a specific name:
 >
-	:JavaImportKeyword MyClass
+	:Java import MyClass
 <
 
 To import a class or enum with a name under the cursor:
 >
-	:JavaImportKeyword
+	:Java import
 <
 
-To re-index (cache) references from imports in the current project:
+To re-index (cache) references from imports in the current project (cwd):
 >
-	:JavaImportIndex
+	:Java index
 <
 
 --------------------------------------------------------------------------------
 COMMANDS                                                 *java-support-commands*
 
-                                                               *:JavaImportSort*
-:JavaImportSort
+                                                                         *:Java*
+:Java cleanup-imports
 	Clean up import statements in the current buffer. Import statements are
 	removed, optimized, sorted, and then written to the buffer just below the
 	package statement (if exists).
 
-                                                            *:JavaImportKeyword*
-:JavaImportKeyword [{name}]
-	Search tag files for classes and enums with a specific [name]. If [name] is
-	given, searches for classes with that name. If [name] is omitted, searches
+:Java import [{name}]
+	Import a class and cleanup the imports.
+
+	Search tag files for classes and enums with a specific {name}. If {name} is
+	given, searches for classes with that name. If {name} is omitted, searches
 	for classes with a name under the cursor (<cword>).
 
 	If there are multiple results, a popup menu is shown allowing the user to
@@ -106,33 +107,34 @@ COMMANDS                                                 *java-support-commands*
 	and k/<Up> keys select a result. You can also use h/<Left> and l/<Right> to
 	show additional information.
 
-                                                              *:JavaImportIndex*
-:JavaImportIndex[!] [{buffer}]
-	Index references from Java files in the current project.
+	If there's nothing under the cursor (<cword> expands to ''), the import
+	statements are sorted (equivalent to running 'cleanup-imports').
 
-	Indexing will help offer better import suggestions by offering classes
-	that have been imported elsewhere in a project. The index is not created
-	automatically at startup; you'll need to plumb that yourself. In large
-	projects, indexing may take a while to complete.
+:Java index [{subcommand} [{arg}]]
+	Manipulate the index. Indexing will help offer better import suggestions by
+	offering classes that have been imported elsewhere in a project. The index
+	is not created automatically at startup; you'll need to plumb that
+	yourself. In large projects, indexing may take a while to complete.
 
-	If {buffer} is given, imports from that buffer are merged into the index.
-	Otherwise, Java files are read through directory traversal (from the cwd)
-	and merged into the index. With a bang "!", the index is written to the
-	index file (see |g:java_import_index_path|).
+	Without any {subcommand} or {arg}, the 'dir' subcommand is assumed,
+	starting at the current working directory.
 
-	When indexing through directory traversal, 'wildignore' is respected.
+	If {subcommand} is 'buffer', imports from the buffer {arg} are merged into
+	the index. If {arg} is omitted, imports are read from the current buffer
+	'%'.
 
-                                                       *:JavaImportIndexRecover*
-:JavaImportIndexRecover[!]
-	Recover and populate the index from the index file
-	|g:java_import_index_path|, if configured. The index from the file is
-	merged into the existing index. With a bang "!", the index file is written
-	to a index file.
+	If {subcommand} is 'dir', Java files are read through recursive directory
+	traversal starting from directory {arg} and merged into the index. If {arg}
+	is omitted, the current working directory is used. 'wildignore' is
+	respected.
 
-                                                         *:JavaImportIndexReset*
-:JavaImportIndexReset[!]
-	Clear the index. With a bang "!", the index file |g:java_import_index_path|
-	is also cleared.
+	If {subcommand} is 'save', the index is written to the file
+	|g:java_import_index_path|.
+
+	If {subcommand} is 'recover', the index is read from the file
+	|g:java_import_index_path| and merged into the index.
+
+	If {subcommand} is 'clear', the index is cleared.
 
 ================================================================================
 OPTIONS                                                   *java-support-options*
@@ -223,16 +225,6 @@ There are no import options at this time.
 --------------------------------------------------------------------------------
 INDEX OPTIONS                                       *java-support-index-options*
 
-                                                  *'g:java_import_index_enable'*
-Enable or disable indexing features. When enabled, the plugin can scan and
-index Java files to offer better import suggestions. When disabled, indexing
-features are not used.
-
-Default:
->
-	let g:java_import_index_enable = 1
-<
-
                                                 *'g:java_import_index_progress'*
 Enable or disable progress information when indexing. When enabled, a popup is
 shown in the bottom right corner to show which files are being indexed.
@@ -249,7 +241,7 @@ saved and must be recreated in each new session.
 
 Default:
 >
-	let g:java_import_index_path = $HOME . '.cache/java-support'
+	let g:java_import_index_path = $HOME . '.cache/java-support/.idx'
 <
 
 ================================================================================
@@ -261,9 +253,8 @@ CREATING CUSTOM MAPPINGS                 *java-support-creating-custom-mappings*
 Key mappings are not created by default, but you can add them if you wish. Here
 are some mappings that I use:
 >
-	nnoremap <silent> <leader>jo :JavaImportSort<CR>
-	nnoremap <silent> <leader>ji :JavaImportKeyword<CR>
-	nnoremap <silent> <leader>jc :JavaImportIndex<CR>
+	nnoremap <silent> <C-i> :Java import<CR>
+	nnoremap <silent> <leader>jc :Java index<CR>
 <
 
 The possibilities don't end there. If you are feeling bold, you could
@@ -307,7 +298,7 @@ Dependence on ctags~
 UNIVERSAL CTAGS                                   *java-support-universal-ctags*
 
 This plugin uses tag files to locate classes and build fully-qualified class
-names. Without it, auto import features will be limited. If you haven't worked
+names. Without it, import features will be limited. If you haven't worked
 with *universal-ctags* before, it'll change your life. It's also pretty easy to
 use. I'll give a bit of information in this section, but you should definitely
 read through the ctags documentation for a more comprehensive overview.

@@ -25,11 +25,6 @@ if !exists('g:java_import_wildcard_count')
 	let g:java_import_wildcard_count = 0
 endif
 
-" By default, enable indexing features.
-if !exists('g:java_import_index_enable')
-	let g:java_import_index_enable = 1
-endif
-
 " By default, enable indexing progress.
 if !exists('g:java_import_index_progress')
 	let g:java_import_index_progress = 1
@@ -38,12 +33,8 @@ endif
 " By default, when saving and loading an index, it's read from
 " ${HOME}/.cache/java-support/.idx
 if !exists('g:java_import_index_path')
-	let g:java_import_index_path = $HOME . '/.cache/java-support'
+	let g:java_import_index_path = $HOME . '/.cache/java-support/.idx'
 endif
 
-command! JavaImportSort call java_support#sort#JavaSortImports()
-command! -nargs=? JavaImportKeyword call java_support#import#JavaImportKeyword(<f-args>)
-command! -nargs=? -bang JavaImportIndex call java_support#index#Load(<bang>v:false, v:false, <f-args>)
-command! -bang JavaImportIndexRecover call java_support#index#Load(<bang>v:false, v:true)
-command! -bang JavaImportIndexReset call java_support#index#Reset(<bang>v:false)
+command! -nargs=* Java call java_support#plugin#Command(<f-args>)
 
