@@ -36,5 +36,10 @@ if !exists('g:java_import_index_path')
 	let g:java_import_index_path = $HOME . '/.cache/java-support/.idx'
 endif
 
+" By default, make all variable declarations 'final'.
+if !exists('g:java_insert_var_declare_final')
+	let g:java_insert_var_declare_final = 1
+endif
+
 command! -nargs=* Java call java_support#plugin#Command(<f-args>)
 

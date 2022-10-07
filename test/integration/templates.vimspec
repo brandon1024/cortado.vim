@@ -1,0 +1,51 @@
+Describe Templates
+	After
+		%bwipeout!
+		let g:java_insert_var_declare_final = 1
+	End
+
+	Describe #InsertLocalVariable
+		It should insert a final var declaration on the cursor line
+			edit! test/input/InsertVariable.java
+
+			" position the cursor to the middle of line 4
+			call cursor(4, 27)
+
+			" sanity check
+			Assert Equals(getline(line('.')), '        prepareHeader(copy(), value)')
+
+			call java_support#templates#InsertLocalVariable()
+
+			" check the inserted text
+			Assert Equals(getline(line('.')), '        final var  = prepareHeader(copy(), value)')
+
+			" check the cursor position
+			let l:pos = getpos('.')
+			Assert Equals(l:pos[1], 4)
+			Assert Equals(l:pos[2], 19)
+		End
+
+		It should insert a non-final var declaration on the cursor line if configured accordingly
+			edit! test/input/InsertVariable.java
+
+			let g:java_insert_var_declare_final = 0
+
+			" position the cursor to the middle of line 4
+			call cursor(4, 27)
+
+			" sanity check
+			Assert Equals(getline(line('.')), '        prepareHeader(copy(), value)')
+
+			call java_support#templates#InsertLocalVariable()
+
+			" check the inserted text
+			Assert Equals(getline(line('.')), '        var  = prepareHeader(copy(), value)')
+
+			" check the cursor position
+			let l:pos = getpos('.')
+			Assert Equals(l:pos[1], 4)
+			Assert Equals(l:pos[2], 13)
+		End
+	End
+End
+
