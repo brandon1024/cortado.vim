@@ -19,33 +19,37 @@ Plug 'brandon1024/java-support.vim'
 ```
 
 ## Usage
-To sort import statements in the current buffer:
-```vim
-:JavaSortImports
+To cleanup import statements:
+```
+:Java cleanup-imports
 ```
 
-To import a class under the current keyword (or a specific class):
-```vim
-:JavaImportKeyword
-:JavaImportKeyword MyClass
+To import a class or enum with a specific name:
+```
+:Java import MyClass
 ```
 
-To index Java files from your project (cwd):
-```vim
-:JavaImportIndex
+To import a class or enum with a name under the cursor:
+```
+:Java import
 ```
 
-The class import functionality relies on the existence of a tags file. The tags
-file can be generated with a tool like
+To re-index (cache) references from imports in the current project (cwd):
+```
+:Java index
+```
+
+This plugin uses tag files to locate classes and build fully-qualified class
+names. Without it, import features will be limited. The tags file can be
+generated with a tool like
 [universal-ctags](https://github.com/universal-ctags/ctags). The ctags
 generator must smart enough to read Java files correctly (including metadata
 like whether it's a class or enum).
 
 You can add a mapping to make your life a bit easier:
 ```vim
-nnoremap <silent> <C-i> :JavaImportKeyword<CR>
-nnoremap <silent> <leader>jo :JavaImportSort<CR>
-nnoremap <silent> <leader>jc :JavaImportIndex<CR>
+nnoremap <silent> <C-i> :Java import<CR>
+nnoremap <silent> <leader>jc :Java index<CR>
 ```
 
 ## Configuration

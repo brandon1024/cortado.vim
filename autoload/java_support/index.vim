@@ -1,76 +1,81 @@
-" Populate the index.
-"
-" When `save` is true, the index is written to `g:java_import_index_path`, if
-" configured.
-"
-" When `recover` is true, the index is loaded from `g:java_import_index_path`,
-" if configured, and merged with the existing index. Otherwise, the index is
-" populated from `buffer`, if non null, or through recursive directory
-" traversal from the cwd.
-function! java_support#index#Load(save, recover, buffer = v:null) abort
-	if !g:java_import_index_enable
-		return java_support#util#Warn('indexing features are disabled')
-	endif
-
-	" lmake sure the index file exists
-	let l:index_file_path = g:java_import_index_path . '/.idx'
-	if !empty(g:java_import_index_path)
-		if !mkdir(g:java_import_index_path, "p")
-			return java_support#util#Warn('failed to create index save location "'
-				\ . g:java_import_index_path . '"')
-		endif
-
-		" create the file
-		call writefile([], l:index_file_path, 'a')
-	endif
-
-	if a:save && empty(g:java_import_index_path)
-		return java_support#util#Warn('index file location unset (g:java_import_index_save)')
-	endif
-
+" Populate the index from the imports in a specific file or buffer.
+" Import statements from the buffer are merged into the existing index.
+function! java_support#index#IndexBuffer(buffer = '%') abort
 	let l:progress_handle = java_support#progress#Show()
-	let l:tree = v:null
+	call java_support#progress#Update(a:progress_handle, 'indexing..', a:buffer)
 
-	if a:recover
-		call java_support#progress#Update(l:progress_handle, 'recovering index..', l:index_file_path)
-		let l:tree = s:RecoverIndexTree(l:index_file_path)
-	else
-		let l:tree = a:buffer != v:null ?
-			\ s:BufferIndexLoader(l:progress_handle, a:buffer) : s:RecursiveIndexLoader(l:progress_handle)
-	endif
+	let l:tree = s:BufferIndexLoader(l:progress_handle, a:buffer)
 
-	" merge the tree with what we already have
 	call java_support#progress#Update(l:progress_handle, 'merging..')
 	let l:tree = java_support#import_tree#MergeTrees(l:tree, s:GetIndexTree())
 
-	" commit, and optionally save to the index file
 	call java_support#progress#Update(l:progress_handle, 'committing..')
-	call s:CommitIndexTree(l:tree, a:save, l:index_file_path)
+	call s:CommitIndexTree(l:tree, v:false)
 
 	call java_support#progress#Complete(l:progress_handle, 'indexing done!')
 endfunction
 
-" Reset the index to its initial (empty) state.
-"
-" When `save` is true, the empty index is written to `g:java_import_index_path`,
-" if configured (clears the cache).
-function! java_support#index#Reset(save) abort
-	if a:save && empty(g:java_import_index_path)
-		return java_support#util#Warn('index file location unset (g:java_import_index_save)')
-	endif
+" Populate the index from the imports in all files in a directory,
+" recursively. Import statements from java files are merged into the existing
+" index. If directory is unset, the current working directory is used.
+function! java_support#index#IndexDirectory(directory = v:null) abort
+	let l:progress_handle = java_support#progress#Show()
 
-	call s:CommitIndexTree(java_support#import_tree#BuildEmpty(),
-		\ a:save, g:java_import_index_path)
+	let l:dir = a:directory == v:null ? getcwd() : a:directory
+	let l:tree = s:RecursiveIndexLoader(l:progress_handle, l:dir)
+
+	call java_support#progress#Update(l:progress_handle, 'merging..')
+	let l:tree = java_support#import_tree#MergeTrees(l:tree, s:GetIndexTree())
+
+	call java_support#progress#Update(l:progress_handle, 'committing..')
+	call s:CommitIndexTree(l:tree, v:false)
+
+	call java_support#progress#Complete(l:progress_handle, 'indexing done!')
+endfunction
+
+" Write the index to `g:java_import_index_path`. The index can be reloaded
+" later with #Recover().
+function! java_support#index#Save() abort
+	let l:progress_handle = java_support#progress#Show()
+	call java_support#progress#Update(l:progress_handle, 'saving index..')
+
+	call s:CommitIndexTree(s:GetIndexTree(), v:true, g:java_import_index_path)
+
+	call java_support#progress#Complete(l:progress_handle, 'index saved!')
+endfunction
+
+" Recover the index from `g:java_import_index_path` and merge with the
+" existing index.
+function! java_support#index#Recover() abort
+	let l:progress_handle = java_support#progress#Show()
+	call java_support#progress#Update(l:progress_handle, 'recovering index..',
+		\ g:java_support_index_path)
+
+	let l:tree = s:RecoverIndexTree(g:java_support_index_path)
+
+	call java_support#progress#Update(l:progress_handle, 'merging..')
+	let l:tree = java_support#import_tree#MergeTrees(l:tree, s:GetIndexTree())
+
+	call java_support#progress#Update(l:progress_handle, 'committing..')
+	call s:CommitIndexTree(l:tree, v:false)
+
+	call java_support#progress#Complete(l:progress_handle, 'index recovered!')
+endfunction
+
+" Clear the index.
+function! java_support#index#Clear() abort
+	let l:progress_handle = java_support#progress#Show()
+	call java_support#progress#Update(l:progress_handle, 'clearing index..')
+
+	call s:CommitIndexTree(java_support#import_tree#BuildEmpty(), v:false)
+
+	call java_support#progress#Complete(l:progress_handle, 'index cleared!')
 endfunction
 
 " Fetch and return results from the index. Returns a list of references for
 " `name`. Returns an empty list if the index is empty, the index doesn't
 " contain `name`, or indexing features are disabled.
 function! java_support#index#Get(name) abort
-	if !g:java_import_index_enable
-		return []
-	endif
-
 	let l:index = s:GetIndex()
 	if l:index is v:null
 		return []
@@ -115,6 +120,7 @@ function! s:CommitIndexTree(tree, save, file = v:null) abort
 			\ java_support#import_tree#Flatten(a:tree,
 				\ { 'prefix': 'import ', 'postfix': ';', 'filter': { 's': v:false } })
 		\ ])
+		call s:TouchFile(a:file)
 		call writefile(l:imports, a:file)
 	endif
 endfunction
@@ -130,16 +136,15 @@ function! s:RecoverIndexTree(file) abort
 endfunction
 
 " Build and return a tree from the buffer `buf`.
-function! s:BufferIndexLoader(progress_handle, buf) abort
+function! s:BufferIndexLoader(buf) abort
 	let l:tree = java_support#import_tree#BuildFromBuffer(a:buf)
-	call java_support#progress#Update(a:progress_handle, 'indexing..', a:buf)
 
 	return l:tree
 endfunction
 
 " Load the index by recursively traversing all directories from the current
 " working directory.
-function! s:RecursiveIndexLoader(progress_handle) abort
+function! s:RecursiveIndexLoader(progress_handle, directory) abort
 	let l:tree = java_support#import_tree#BuildEmpty()
 	function! s:Visitor(path) abort closure
 		if a:path =~ '\.java$'
@@ -149,8 +154,19 @@ function! s:RecursiveIndexLoader(progress_handle) abort
 		call java_support#progress#Update(a:progress_handle, 'indexing..', a:path)
 	endfunction
 
-	call java_support#util#TraverseDirs(getcwd(), { path -> s:Visitor(path) })
+	call java_support#util#TraverseDirs(a:directory, { path -> s:Visitor(path) })
 
 	return l:tree
+endfunction
+
+" Create the index `file`, if one does not already exist.
+function! s:TouchFile(file) abort
+	let l:dirname = fnamemodify(a:file, ':p:h')
+	if !mkdir(l:dirname, 'p')
+		return java_support#util#Warn('failed to create index file "'
+			\ . l:index_file_path . '"')
+	endif
+
+	call writefile([], a:file, 'a')
 endfunction
 
