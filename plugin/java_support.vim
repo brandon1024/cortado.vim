@@ -25,6 +25,11 @@ if !exists('g:java_import_wildcard_count')
 	let g:java_import_wildcard_count = 0
 endif
 
+" By default, always show popup.
+if !exists('g:java_import_popup_show_always')
+	let g:java_import_popup_show_always = 1
+endif
+
 " By default, enable indexing progress.
 if !exists('g:java_import_index_progress')
 	let g:java_import_index_progress = 1

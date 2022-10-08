@@ -239,7 +239,16 @@ Default:
 --------------------------------------------------------------------------------
 IMPORT OPTIONS                                     *java-support-import-options*
 
-There are no import options at this time.
+                                             *'g:java_import_popup_show_always'*
+Configure when to show the popup when importing classes. By default, the popup
+is always shown when there are 1 or more results. If this option is set to zero,
+if there's only a single import result, that class will be automatically
+imported without showing a popup.
+
+Default:
+>
+	let g:java_import_popup_show_always = 1
+<
 
 --------------------------------------------------------------------------------
 INDEX OPTIONS                                       *java-support-index-options*

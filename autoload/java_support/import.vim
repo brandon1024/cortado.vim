@@ -97,6 +97,10 @@ function! s:ImportFromSelection(keyword, tag_results) abort
 		endif
 	endfunction
 
+	if !g:java_import_popup_show_always && len(a:tag_results) == 1
+		return s:PopupMenuCallback(0, 1)
+	endif
+
 	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:state)
 	call popup_create(l:popup_entries, {
 		\ 'line': 'cursor+1',
