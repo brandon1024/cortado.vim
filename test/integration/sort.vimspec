@@ -2,6 +2,7 @@ Describe sort
 	After
 		%bwipeout!
 		let g:java_import_wildcard_count = 0
+		let g:java_import_filter_same_package = 1
 	End
 
 	Describe #JavaSortImports
@@ -164,11 +165,11 @@ Describe sort
 			Assert Equals(len(l:import_lines), 1)
 
 			" ensure ca.example.vim imports were merged
-			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.\*')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.internal2\.\*')
 			Assert Equals(len(l:import_lines), 1)
 
 			" ensure ca.example.vim.internal imports were not merged
-			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.internal')
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import ca\.example\.vim\.internal\.')
 			Assert Equals(len(l:import_lines), 2)
 		End
 
@@ -178,8 +179,34 @@ Describe sort
 			call java_support#sort#JavaSortImports()
 
 			" ensure imports were not collapsed into one
-			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.vim.Internal;') > 0)
-			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.vim.Internal.Interface;') > 0)
+			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.internal.vim.Internal;') > 0)
+			Assert True(java_support#buffer#FindLineMatchingPattern('%', 1, 'import ca.example.internal.vim.Internal.Interface;') > 0)
+		End
+
+		It should filter imports that are in the same package as the current file
+			edit! test/input/SortFilterSamePackage.java
+
+			call java_support#sort#JavaSortImports()
+
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
+			Assert Equals(len(l:import_lines), 2)
+
+			Assert Equals(l:import_lines[0], 'import ca.example.vim.external.NotFiltered;')
+			Assert Equals(l:import_lines[1], 'import ca.example.vim.internal.NotFiltered;')
+		End
+
+		It should not filter imports that are in the same package as the current file if configured accordingly
+			edit! test/input/SortFilterSamePackage.java
+
+			let g:java_import_filter_same_package = 0
+			call java_support#sort#JavaSortImports()
+
+			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
+			Assert Equals(len(l:import_lines), 3)
+
+			Assert Equals(l:import_lines[0], 'import ca.example.vim.Filtered;')
+			Assert Equals(l:import_lines[1], 'import ca.example.vim.external.NotFiltered;')
+			Assert Equals(l:import_lines[2], 'import ca.example.vim.internal.NotFiltered;')
 		End
 	End
 End

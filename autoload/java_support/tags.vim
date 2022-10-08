@@ -16,7 +16,7 @@ function! java_support#tags#Lookup(keyword) abort
 			continue
 		endif
 
-		let l:package = s:FindPackageForFile(tag.filename)
+		let l:package = java_support#java#GetPackageForFile(tag.filename)
 		if empty(l:package)
 			continue
 		endif
@@ -60,42 +60,5 @@ function! java_support#tags#Lookup(keyword) abort
 	endfor
 
 	return l:prompt_results
-endfunction
-
-" Read the contents of `file` and look for a package statement.
-"
-" Loading the entire file into memory can be pretty wasteful, given that
-" package statements usually appear very close to the top of the file. To
-" reduce overhead, files are read incrementally. In the worst case, this could
-" result in multiple file reads, but in the normal case will improve overall
-" performance.
-"
-" If found, returns the package statement components. Otherwise returns an
-" empty list.
-function! s:FindPackageForFile(file) abort
-	let l:chunk = 10
-	let l:offset = 0
-
-	while v:true
-		let l:lines = readfile(a:file, '', l:chunk)
-
-		for line in l:lines[l:offset:-1]
-			let l:matches = matchlist(line, 'package\s\+\([^;]\+\);')
-
-			if !empty(l:matches)
-				return split(substitute(l:matches[1], '\s', '', 'g'), '\.')
-			endif
-		endfor
-
-		" if we have reached end of file
-		if len(l:lines) < l:chunk
-			return []
-		endif
-
-		let l:offset = len(l:lines)
-		let l:chunk *= 3
-	endwhile
-
-	return []
 endfunction
 

@@ -2,12 +2,32 @@
 " Assumes that all import statements have already been removed from the
 " buffer.
 function! java_support#sort#JavaSortImportsTrees(tree) abort
+	let l:current_package = java_support#java#GetPackage()
+
+	" only filter imports when configured
+	let l:FilterPredicate = { path, meta -> l:current_package != path[0:-2] }
+	if !g:java_import_filter_same_package
+		let l:FilterPredicate = { path, meta -> v:true }
+	endif
+
 	" sort import statements according to configuration
 	let l:imports = s:SortImportStatements(java_support#util#Flatten([
-		\ java_support#import_tree#Flatten(a:tree,
-			\ { 'prefix': 'import static ', 'postfix': ';', 'filter': { 's': v:true } }),
-		\ java_support#import_tree#Flatten(a:tree,
-			\ { 'prefix': 'import ', 'postfix': ';', 'filter': { 's': v:false } })
+		\ java_support#import_tree#Flatten(a:tree, {
+			\ 'prefix': 'import static ',
+			\ 'postfix': ';',
+			\ 'filter': {
+				\ 's': v:true,
+				\ 'f': l:FilterPredicate
+			\ }
+		\ }),
+		\ java_support#import_tree#Flatten(a:tree, {
+			\ 'prefix': 'import ',
+			\ 'postfix': ';',
+			\ 'filter': {
+				\ 's': v:false,
+				\ 'f': l:FilterPredicate
+			\ }
+		\ })
 	\ ]))
 
 	" truncate leading blank lines
@@ -26,7 +46,6 @@ endfunction
 
 " Sort import statements in the current buffer.
 function! java_support#sort#JavaSortImports() abort
-	" ensure this is a java file
 	if &filetype != 'java'
 		return java_support#util#Warn('cannot sort imports: unexpected filetype "' . &filetype . '"')
 	endif
