@@ -16,6 +16,10 @@ function! java_support#tags#Lookup(keyword) abort
 			continue
 		endif
 
+		if !filereadable(tag.filename)
+			continue
+		endif
+
 		let l:package = java_support#java#GetPackageForFile(tag.filename)
 		if empty(l:package)
 			continue
