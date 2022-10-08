@@ -34,6 +34,64 @@ function! java_support#java#NormalizeImportStatements(stmts) abort
 	return l:result
 endfunction
 
+" Read the package declaration for a given buffer.
+"
+" If found, returns the package statement components. Otherwise returns an
+" empty list.
+function! java_support#java#GetPackage(buffer = '%') abort
+	let l:pkg_stmt_lnum = java_support#buffer#FindLineMatchingPattern(a:buffer,
+		\ 1, s:GetPackagePattern())
+	if l:pkg_stmt_lnum <= 0
+		return []
+	endif
+
+	let l:pkg_line = getline(l:pkg_stmt_lnum)
+	let l:matches = matchlist(l:pkg_line, s:GetPackagePattern())
+	return split(substitute(l:matches[1], '\s', '', 'g'), '\.')
+endfunction
+
+" Read the contents of `file` and look for a package statement.
+"
+" Loading the entire file into memory can be pretty wasteful, given that
+" package statements usually appear very close to the top of the file. To
+" reduce overhead, files are read incrementally. In the worst case, this could
+" result in multiple file reads, but in the normal case will improve overall
+" performance.
+"
+" If found, returns the package statement components. Otherwise returns an
+" empty list.
+function! java_support#java#GetPackageForFile(file) abort
+	let l:chunk = 10
+	let l:offset = 0
+
+	while v:true
+		let l:lines = readfile(a:file, '', l:chunk)
+
+		for line in l:lines[l:offset:-1]
+			let l:matches = matchlist(line, s:GetPackagePattern())
+
+			if !empty(l:matches)
+				return split(substitute(l:matches[1], '\s', '', 'g'), '\.')
+			endif
+		endfor
+
+		" if we have reached end of file
+		if len(l:lines) < l:chunk
+			return []
+		endif
+
+		let l:offset = len(l:lines)
+		let l:chunk *= 3
+	endwhile
+
+	return []
+endfunction
+
+" Return a pattern that can be used to match package statements.
+function! s:GetPackagePattern() abort
+	return 'package\s\+\([^;]\+\);'
+endfunction
+
 " Normalize a single import statement.
 function! s:NormalizeImportStatement(stmt) abort
 	let l:matches = matchlist(a:stmt,

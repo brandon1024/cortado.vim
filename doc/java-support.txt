@@ -236,6 +236,14 @@ Default:
 	let g:java_import_wildcard_count = 0
 <
 
+                                           *'g:java_import_filter_same_package'*
+Filter imports that are in the same package as the current file.
+
+Default:
+>
+	let g:java_import_filter_same_package = 1
+<
+
 --------------------------------------------------------------------------------
 IMPORT OPTIONS                                     *java-support-import-options*
 

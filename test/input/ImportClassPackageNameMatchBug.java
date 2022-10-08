@@ -1,7 +1,7 @@
 package ca.example.vim;
 
-import ca.example.vim.Internal;
-import ca.example.vim.Internal.Interface;
+import ca.example.internal.vim.Internal;
+import ca.example.internal.vim.Internal.Interface;
 
 public class ImportClassPackageNameMatchBug {
     public ImportClassPackageNameMatchBug() {}

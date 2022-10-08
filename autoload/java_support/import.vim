@@ -1,18 +1,19 @@
-" Import a class with name `keyword`. If `keyword` is empty or unset, default
-" to keyword under cursor (<cword>).
-" If a keyword is provided as a function argument, the first result is
-" imported. Otherwise, a popup menu is shown allowing the user to select which
-" class to import.
-" If 'keyword' is empty and <cword> expands to empty, the imports in the
+" Import a class with name `keyword`.
+"
+" If `keyword` is provided as a function argument, a popup menu is shown
+" allowing the user to select which class to import.
+"
+" If `keyword` is empty or unset, default to keyword under cursor (<cword>).
+"
+" If `keyword` is empty and <cword> expands to empty, the imports in the
 " current buffer are sorted.
 function! java_support#import#JavaImportKeyword(keyword = '') abort
-	" ensure this is a java file
 	if &filetype != 'java'
 		return java_support#util#Warn('cannot import class: unexpected filetype "' . &filetype . '"')
 	endif
 
 	let l:keyword = a:keyword ? a:keyword : s:GetKeywordUnderCursor()
-	if l:keyword == ''
+	if empty(l:keyword)
 		call java_support#sort#JavaSortImports()
 		return
 	endif
@@ -27,32 +28,32 @@ function! java_support#import#JavaImportKeyword(keyword = '') abort
 		return java_support#util#Warn('cannot import, nothing found for keyword "' . l:keyword . '"')
 	endif
 
+	" if there's only one result, don't show popup if configured
+	if !g:java_import_popup_show_always && len(a:tag_results) == 1
+		return s:ImportClass(a:tag_results[0])
+	endif
+
 	call s:ImportFromSelection(l:keyword, l:import_tag_results)
 endfunction
 
-" Get the keyword (<cword>) under the cursor.
-function! s:GetKeywordUnderCursor() abort
-	return expand('<cword>')
-endfunction
-
-" Build popup entry strings for the given `tag_results`.
-" `mode` is used to select a format.
+" Build popup entry strings for the given `tag_results`. `mode` is used to
+" select a format.
 function! s:BuildPopupEntries(tag_results, mode) abort
 	let l:popup_entries = []
-	for result in a:tag_results
-		let l:entry = ''
-		if a:mode == 0
-			let l:entry = printf(' [%s%s] %s ', result.s ? 'static ' : '',
-				\ result.type, join(result.fq_name, '.'))
-		elseif a:mode == 1
-			let l:entry = ' ' . pathshorten(result.fname) . ' '
-		elseif a:mode == 2
-			let l:entry = ' ' . result.fname . ' '
-		else
-			throw 'bug: unexpected mode ' . a:mode
-		endif
 
-		call add(l:popup_entries, l:entry)
+	for result in a:tag_results
+		\ " format 0: ' [<static> <kind>] <import> '
+		\ " format 1: ' <short filepath> '
+		\ " format 1: ' <long filepath> '
+
+		let l:formats = [
+			\ printf(' [%s%s] %s ', result.s ? 'static ' : '',
+				\ result.type, join(result.fq_name, '.')),
+			\ ' ' . pathshorten(result.fname) . ' ',
+			\ ' ' . result.fname . ' '
+		\ ]
+
+		call add(l:popup_entries, l:formats[a:mode])
 	endfor
 
 	return l:popup_entries
@@ -61,8 +62,8 @@ endfunction
 " Rotate the entries in the popup, and return `mode`.
 function! s:RotatePopupEntries(id, mode, tag_results) abort
 	let l:mode = a:mode < 0 ? 2 : (a:mode > 2 ? 0 : a:mode)
-	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:mode)
-	call popup_settext(a:id, l:popup_entries)
+	call popup_settext(a:id, s:BuildPopupEntries(a:tag_results, l:mode))
+
 	return l:mode
 endfunction
 
@@ -97,10 +98,6 @@ function! s:ImportFromSelection(keyword, tag_results) abort
 		endif
 	endfunction
 
-	if !g:java_import_popup_show_always && len(a:tag_results) == 1
-		return s:PopupMenuCallback(0, 1)
-	endif
-
 	let l:popup_entries = s:BuildPopupEntries(a:tag_results, l:state)
 	call popup_create(l:popup_entries, {
 		\ 'line': 'cursor+1',
@@ -123,7 +120,7 @@ endfunction
 
 " Fetch import suggestion results from tags and from the index (if enabled).
 function! s:FetchResults(keyword) abort
-	let l:results = java_support#tags#Lookup(a:keyword)
+	let l:tag_results = java_support#tags#Lookup(a:keyword)
 
 	let l:indexed_results = []
 	for indexed in java_support#index#Get(a:keyword)
@@ -132,10 +129,12 @@ function! s:FetchResults(keyword) abort
 	endfor
 
 	" sort results by kind
-	let l:results = sort(l:results, function('java_support#import#ResultComparator'))
-	let l:indexed_results = sort(l:indexed_results, function('java_support#import#ResultComparator'))
+	let l:tag_results = sort(l:tag_results,
+		\ function('java_support#import#ResultComparator'))
+	let l:indexed_results = sort(l:indexed_results,
+		\ function('java_support#import#ResultComparator'))
 
-	return java_support#import#MergeFilterDuplicateResults(l:results, l:indexed_results)
+	return java_support#import#MergeFilterDuplicateResults(l:tag_results, l:indexed_results)
 endfunction
 
 " A comparator for results. Used to sort results in the following order:
@@ -163,5 +162,10 @@ function! java_support#import#MergeFilterDuplicateResults(tag_results, index_res
 		\ { idx, val -> !has_key(l:hashed_tag_results, string(val.fq_name)) })
 
 	return extend(a:tag_results, a:index_results)
+endfunction
+
+" Get the keyword (<cword>) under the cursor.
+function! s:GetKeywordUnderCursor() abort
+	return expand('<cword>')
 endfunction
 

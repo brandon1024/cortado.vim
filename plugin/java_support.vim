@@ -25,6 +25,12 @@ if !exists('g:java_import_wildcard_count')
 	let g:java_import_wildcard_count = 0
 endif
 
+" By default, filter imports that are in the same package as the current java
+" file.
+if !exists('g:java_import_filter_same_package')
+	let g:java_import_filter_same_package = 1
+endif
+
 " By default, always show popup.
 if !exists('g:java_import_popup_show_always')
 	let g:java_import_popup_show_always = 1

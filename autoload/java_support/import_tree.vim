@@ -136,6 +136,8 @@ endfunction
 " 		flatten. The keys/values map to the supported fields for leaf nodes:
 " 			's': v:true/v:false (indicate whether to filter static/non-static
 " 			entries)
+" 			'f': a predicate that accepts the node and indicates whether the
+" 			node should be included or not
 " 	'initial': <list>
 " 		Flatten tree into this list instead of a new one.
 function! java_support#import_tree#Flatten(tree, options = {}) abort
@@ -211,14 +213,21 @@ function! s:CreatePathInTree(tree, nodes) abort
 endfunction
 
 " Check whether a node should be flattened based on the filter and it's metadata.
-function! s:ShouldFlattenNode(meta, filter) abort
-	for [k, v] in items(a:filter)
-		if !has_key(a:meta, k) || v != a:meta[k]
-			return v:false
+function! s:ShouldFlattenNode(path, meta, filter) abort
+	let l:should_flatten = v:true
+	for [k, VALUE] in items(a:filter)
+		" filter static / non-static
+		if k == 's' && a:meta['s'] != VALUE
+			let l:should_flatten = v:false
+		endif
+
+		" filter by user-defined predicate
+		if k == 'f' && !VALUE(a:path, a:meta)
+			let l:should_flatten = v:false
 		endif
 	endfor
 
-	return v:true
+	return l:should_flatten
 endfunction
 
 " Merge (or otherwise manipulate) leaf nodes according to configuration
@@ -266,9 +275,11 @@ function! s:FlattenInternal(tree, options) abort
 	" first process any leaf nodes
 	let l:merged_leaf_nodes = s:MergeLeafNodes(a:tree.leaf)
 	for [name, meta] in items(l:merged_leaf_nodes)
-		if s:ShouldFlattenNode(meta, a:options.filter)
-			let l:fq_import = join(java_support#util#Flatten([a:options._path, name]), '.')
-			call add(a:options.initial, a:options.prefix . l:fq_import . a:options.postfix)
+		let l:path = java_support#util#Flatten([a:options._path, name])
+
+		if s:ShouldFlattenNode(l:path, meta, a:options.filter)
+			let l:formatted = a:options.prefix . join(l:path, '.') . a:options.postfix
+			call add(a:options.initial, l:formatted)
 		endif
 	endfor
 
