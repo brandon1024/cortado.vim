@@ -395,6 +395,40 @@ Describe import_tree
 		End
 	End
 
+	Describe #Remove
+		It should not remove nodes that do not exist in tree
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let l:tree = java_support#import_tree#BuildFromStatements(l:statements)
+
+			let l:removed = java_support#import_tree#Remove(l:tree, ['java', 'util', 'Collection'])
+			Assert False(l:removed)
+
+			let l:removed = java_support#import_tree#Remove(l:tree, ['java', 'util', 'List', 'Deeper'])
+			Assert False(l:removed)
+		End
+
+		It should correctly remove node from the tree
+			let l:statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.List.Deeper;'
+				\ ]
+
+			let l:tree = java_support#import_tree#BuildFromStatements(l:statements)
+
+			let l:removed = java_support#import_tree#Remove(l:tree, ['java', 'util', 'List'])
+			Assert True(l:removed)
+			Assert False(test_utils#tree#HasNode(l:tree, 'java.util.List'))
+			Assert True(test_utils#tree#HasNode(l:tree, 'java.util.List.Deeper'))
+		End
+	End
+
 	Describe #Index
 		It should flatten tree into a dictionary keyed by leaf name
 			let l:statements = [

@@ -36,6 +36,65 @@ function! java_support#import#JavaImportKeyword(keyword = '') abort
 	call s:ImportFromSelection(l:keyword, l:import_tag_results)
 endfunction
 
+" Look for unused imports in a buffer. If 'remove' is true, the unused imports
+" are removed. Otherwise, the unused imports are written to the quickfix list.
+function! java_support#import#FindUnused(buffer = '%', remove = v:false) abort
+	if &filetype != 'java'
+		return java_support#util#Warn('cannot import class: unexpected filetype "' . &filetype . '"')
+	endif
+
+	" build import tree from the buffer, removing the import statements
+	let l:tree = java_support#import_tree#BuildFromBuffer(a:buffer, v:true)
+
+	" index the tree for easier usage lookup in buffer
+	let l:indexed_tree = java_support#import_tree#Index(l:tree)
+
+	" ignore star imports in the index
+	if has_key(l:indexed_tree, '*')
+		call remove(l:indexed_tree, '*')
+	endif
+
+	if !a:remove
+		call setqflist([], 'r')
+	endif
+
+	" find unused imports
+	let l:unused = s:FindUnused(a:buffer, l:indexed_tree)
+	for fq_name in l:unused
+		if a:remove
+			call java_support#import_tree#Remove(l:tree, fq_name)
+		else
+			call setqflist([{
+				\ 'bufnr': bufnr(a:buffer),
+				\ 'pattern': join(fq_name, '.'),
+				\ 'text': join(fq_name, '.')
+			\ }], 'a')
+		endif
+	endfor
+
+	call java_support#sort#JavaSortImportsTrees(l:tree)
+endfunction
+
+" From an index, look for usages of each import in the given buffer. Return
+" a list of all fully-qualified imports (split into their components) that
+" are not referenced in the buffer.
+function! s:FindUnused(buffer, index) abort
+	let l:unused = []
+	for [class_name, entries] in items(a:index)
+		" exactly match the classname:
+		" - match case sensitive
+		" - the character before or after the classname must not be an
+		"   indentifier character [^a-zA-Z$_]
+		let l:pattern = '\C\(^\|[^a-zA-Z$_]\)' . class_name . '\($\|[^a-zA-Z$_]\)'
+
+		if !java_support#buffer#FindLineMatchingPattern(a:buffer, 1, l:pattern)
+			call extend(l:unused, map(entries, {idx, val -> val['fq_name']}))
+		endif
+	endfor
+
+	return l:unused
+endfunction
+
 " Build popup entry strings for the given `tag_results`. `mode` is used to
 " select a format.
 function! s:BuildPopupEntries(tag_results, mode) abort

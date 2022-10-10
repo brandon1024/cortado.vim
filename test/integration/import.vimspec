@@ -25,6 +25,39 @@ Describe Import
 		End
 	End
 
+	Describe #FindUnused
+		Before
+			call setqflist([], 'r')
+		End
+
+		It should find unused imports and add them to the quickfix list
+			edit! test/input/FindUnusedImports.java
+
+			call java_support#import#FindUnused()
+
+			let l:errors = getqflist()
+			Assert Equals(len(l:errors), 1)
+
+			let l:error = l:errors[0]
+			Assert Equals(l:error['pattern'], 'ca.example.vim.internal.Unused')
+			Assert Equals(l:error['text'], 'ca.example.vim.internal.Unused')
+
+			let l:tree = java_support#import_tree#BuildFromBuffer()
+			Assert True(test_utils#tree#HasNode(l:tree, 'ca.example.vim.internal.Unused'))
+		End
+
+		It should remove unused imports
+			edit! test/input/FindUnusedImports.java
+
+			call java_support#import#FindUnused('%', v:true)
+			
+			Assert True(empty(getqflist()))
+
+			let l:tree = java_support#import_tree#BuildFromBuffer()
+			Assert False(test_utils#tree#HasNode(l:tree, 'ca.example.vim.internal.Unused'))
+		End
+	End
+
 	Describe #ResultComparator
 		It should sort results by kind
 			let l:results = [

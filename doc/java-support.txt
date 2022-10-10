@@ -56,7 +56,7 @@ Sort/Reformat Import Statements~
 	package, and configure the order of individual import groups.
 
 Optimize/Merge Import Statements~
-	Remove duplicate or unecessary import statements. Automatically merge
+	Remove duplicate or unused import statements. Automatically merge
 	same-package imports into a single wildcard import (when enabled).
 
 Class/Interface/Enum/Method Import~
@@ -70,9 +70,9 @@ Introduce Local Variable Declaration~
 ================================================================================
 USAGE                                                       |java-support-usage|
 
-To cleanup import statements:
+To optimize import statements:
 >
-	:Java cleanup-imports
+	:Java imports optimize
 <
 
 To import a class or enum with a specific name:
@@ -99,10 +99,23 @@ To insert a local variable declaration under the current line:
 COMMANDS                                                 *java-support-commands*
 
                                                                          *:Java*
-:Java cleanup-imports
+:Java imports [{subcommand} [{arg}]]
 	Clean up import statements in the current buffer. Import statements are
 	removed, optimized, sorted, and then written to the buffer just below the
 	package statement (if exists).
+
+	If {subcommand} is 'sort', import statements are sorted according to
+	|g:java_import_order| and other sort options. Duplicate imports are removed.
+
+	If {subcommand} is 'optimize', imports that are not referenced anywhere in
+	the buffer are removed. Import statements are sorted like the 'sort'
+	subcommand. A buffer name {arg} may be provided, defaulting to the current
+	buffer '%'.
+
+	If {subcommand} is 'find-unused', imports that are not referenced anywhere
+	in the buffer are added to the quickfix list for further inspection. Import
+	statements are sorted like the 'sort'. A buffer name {arg} may be provided,
+	defaulting to the current buffer '%'.
 
 :Java import [{name}]
 	Import a class and cleanup the imports.

@@ -19,24 +19,29 @@ Plug 'brandon1024/java-support.vim'
 ```
 
 ## Usage
-To cleanup import statements:
+To optimize import statements:
 ```
-:Java cleanup-imports
+	:Java imports optimize
 ```
 
 To import a class or enum with a specific name:
 ```
-:Java import MyClass
+	:Java import MyClass
 ```
 
 To import a class or enum with a name under the cursor:
 ```
-:Java import
+	:Java import
 ```
 
 To re-index (cache) references from imports in the current project (cwd):
 ```
-:Java index
+	:Java index
+```
+
+To insert a local variable declaration under the current line:
+```
+	:Java insert-var
 ```
 
 This plugin uses tag files to locate classes and build fully-qualified class

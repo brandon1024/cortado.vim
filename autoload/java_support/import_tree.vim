@@ -109,18 +109,39 @@ endfunction
 function! java_support#import_tree#MergeTrees(tree_a, tree_b) abort
 	let l:result = java_support#import_tree#BuildEmpty()
 
-	function! s:TreeNodeVisitor(name, meta, path, acc) abort closure
-		call java_support#import_tree#Merge(l:result, a:path, a:meta)
-	endfunction
-
 	call s:TraverseTree(a:tree_a,
-		\ { name, meta, path, acc -> s:TreeNodeVisitor(name, meta, path, acc) },
+		\ { name, meta, path, acc -> java_support#import_tree#Merge(l:result, path, meta) },
 		\ [], v:null)
 	call s:TraverseTree(a:tree_b,
-		\ { name, meta, path, acc -> s:TreeNodeVisitor(name, meta, path, acc) },
+		\ { name, meta, path, acc -> java_support#import_tree#Merge(l:result, path, meta) },
 		\ [], v:null)
 
 	return l:result
+endfunction
+
+" Remove a node from the tree. Returns whether or not the node existed in the
+" tree.
+function! java_support#import_tree#Remove(tree, path) abort
+	let l:leaf_name = remove(a:path, -1)
+
+	let l:node = a:tree
+	for node_name in a:path
+		let l:node = l:node['children']
+		if !has_key(l:node, node_name)
+			return v:false
+		endif
+
+		let l:node = l:node[node_name]
+	endfor
+
+	let l:node = l:node['leaf']
+	if !has_key(l:node, l:leaf_name)
+		return v:false
+	endif
+
+	call remove(l:node, l:leaf_name)
+
+	return v:true
 endfunction
 
 " Flatten `tree` into a flat list and return it.
