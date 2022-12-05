@@ -1,0 +1,111 @@
+Describe cortado#internal#import#optimize
+	Before
+		let trees = cortado#internal#import#tree#new()
+		let optimizer = cortado#internal#import#optimize#new()
+	End
+
+	Describe #wildcards
+		Before
+			%bwipeout!
+		End
+
+		After
+			let g:java_import_wildcard_count = 0
+		End
+
+		It should remove wildcard nodes if configured
+			let g:cortado_import_wildcard_count = -1
+
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.*;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.*'))
+
+			let result = optimizer.wildcards(tree)
+			
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.*'))
+		End
+
+		It should merge leafs into wildcard nodes if configured
+			let g:cortado_import_wildcard_count = 0
+
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.*;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.*'))
+
+			let result = optimizer.wildcards(tree)
+			
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.*'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.List'))
+		End
+
+		It should merge leafs nodes into wildcards if the number of leafs exceed configured value
+			let g:cortado_import_wildcard_count = 3
+
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.Arrays;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Arrays'))
+
+			let result = optimizer.wildcards(tree)
+			
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.*'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.Arrays'))
+
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+
+			let result = optimizer.wildcards(tree)
+			
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert False(test_utils#tree#has_node(tree, 'java.util.*'))
+		End
+	End
+End

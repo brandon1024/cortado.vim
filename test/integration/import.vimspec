@@ -1,10 +1,12 @@
-Describe Import
+Describe cortado#import
 	After
 		%bwipeout!
 	End
 
-	Describe #JavaImportKeyword
+	Describe #import
 		It should sort imports if no classname provided and no keyword under cursor
+			let buffers = cortado#internal#buffer#new()
+
 			edit! test/input/Simple.java
 
 			" position the cursor at the end of the file so that <cword> expands
@@ -14,20 +16,20 @@ Describe Import
 			" sanity check
 			Assert Equals(expand('<cword>'), '')
 
-			call java_support#import#JavaImportKeyword()
+			call cortado#import#keyword()
 
-			let l:import_lines = java_support#buffer#FindLinesMatchingPattern('%', 1, '^import')
-			Assert Equals(len(l:import_lines), 2)
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 2)
 
 			" should have sorted
-			Assert Equals(l:import_lines[0], 'import ca.example.vim.external.Interface;')
-			Assert Equals(l:import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
+			Assert Equals(import_lines[0], 'import ca.example.vim.external.Interface;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
 		End
 	End
 
-	Describe #ResultComparator
+	Describe #result_comparator
 		It should sort results by kind
-			let l:results = [
+			let results = [
 				\ { 'type': 'indexed', 'val': 9 },
 				\ { 'type': 'c', 'val': 0 },
 				\ { 'type': 'm', 'val': 8 },
@@ -42,27 +44,27 @@ Describe Import
 				\ { 'type': 'c', 'val': 2 },
 			\ ]
 
-			let l:sorted = sort(l:results, function('java_support#import#ResultComparator'))
-			for i in range(len(l:results))
-				Assert Equals(l:sorted[i]['val'], i)
+			let sorted = sort(results, function('cortado#import#result_comparator'))
+			for i in range(len(results))
+				Assert Equals(sorted[i]['val'], i)
 			endfor
 		End
 	End
 
-	Describe #MergeFilterDuplicateResults
+	Describe #merge_filter_duplicate_results
 		It should filter indexed results that exist in the tag results
-			let l:results = [
+			let results = [
 				\ { 'fq_name': ['com', 'example', 'vim'] },
 				\ { 'fq_name': ['com', 'example', 'vim1'] },
 			\ ]
-			let l:index_results = [
+			let index_results = [
 				\ { 'fq_name': ['com', 'example', 'vim1'] },
 			\ ]
 
-			let l:filtered = java_support#import#MergeFilterDuplicateResults(l:results, l:index_results)
-			Assert Equals(len(l:filtered), 2)
-			for i in range(len(l:filtered))
-				Assert Equals(l:filtered[i].fq_name, l:results[i].fq_name)
+			let filtered = cortado#import#merge_filter_duplicate_results(results, index_results)
+			Assert Equals(len(filtered), 2)
+			for i in range(len(filtered))
+				Assert Equals(filtered[i].fq_name, results[i].fq_name)
 			endfor
 		End
 	End

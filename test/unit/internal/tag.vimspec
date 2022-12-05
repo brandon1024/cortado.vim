@@ -1,0 +1,142 @@
+Describe cortado#internal#tag
+	Before
+		let tags = cortado#internal#tag#new()
+	End
+
+	Describe #lookup
+		After
+			set noignorecase
+		End
+
+		Describe common
+			It should have found the tag file for tests
+				Assert True(len(tagfiles()) > 0)
+				Assert True(len(taglist('^Simple$')) > 0)
+			End
+
+			It should find the package statement even if it appears pretty far in file
+				Assert True(len(taglist('^PackageStatementTest$')) > 0)
+				let result = tags.lookup('PackageStatementTest')
+				Assert Equals(len(result), 1)
+				
+				let result = result[0]
+				Assert Equals(result.type, 'c')
+				Assert Equals(result.fq_name, ['ca', 'example', 'vim', 'PackageStatementTest'])
+			End
+
+			It should search tags in a case sensitive manner regardless of ignorecase option
+				set ignorecase
+				let result = tags.lookup('uniquecasesensitivename')
+				Assert Equals(len(result), 1)
+
+				let result = tags.lookup('UNIQUECASESENSITIVENAME')
+				Assert Equals(len(result), 1)
+			End
+		End
+
+		Describe class/interface/enum/annotation imports
+			It should find a class when given a classname
+				let result = tags.lookup('Simple')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('c', 'ca.example.vim.Simple', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find a nested class when given a classname
+				let result = tags.lookup('StaticInnerClass')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('c', 'ca.example.vim.NestedClasses.StaticInnerClass', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find an interface when given an interface name
+				let result = tags.lookup('SimpleInterface')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('i', 'ca.example.vim.SimpleInterface', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find a nested interface when given an interface name
+				let result = tags.lookup('MyNestedInterface')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('i', 'ca.example.vim.NestedInterfaces.MyNestedInterface', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find an enum definition with a given name
+				let result = tags.lookup('SimpleEnum')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('g', 'ca.example.vim.SimpleEnum', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find a nested enum definition with a given name
+				let result = tags.lookup('MyNestedEnum')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('g', 'ca.example.vim.NestedEnums.MyNestedEnum', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find an annotation definition with a given name
+				let result = tags.lookup('SimpleAnnotation')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('a', 'ca.example.vim.SimpleAnnotation', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+
+			It should find a nested annotation definition with a given name
+				let result = tags.lookup('MyNestedAnnotation')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('a', 'ca.example.vim.NestedAnnotations.MyNestedAnnotation', result)
+				Assert NotEqual(result, v:null)
+				Assert False(result.s)
+			End
+		End
+
+		Describe enum/method imports
+			It should find a method with a given name
+				let result = tags.lookup('myStaticMethod')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('m', 'ca.example.vim.ImportStaticMethod.myStaticMethod', result)
+				Assert NotEqual(result, v:null)
+				Assert True(result.s)
+			End
+
+			It should find an enum with a given name
+				let result = tags.lookup('ENUM_VALUE')
+				Assert True(len(result) > 0)
+
+				" find ours
+				let result = test_utils#tags#find_result('e', 'ca.example.vim.SimpleEnum.ENUM_VALUE', result)
+				Assert NotEqual(result, v:null)
+				Assert True(result.s)
+			End
+		End
+	End
+End
+

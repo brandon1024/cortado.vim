@@ -1,0 +1,485 @@
+Describe cortado#internal#import#tree
+	Before
+		let trees = cortado#internal#import#tree#new()
+		let buffers = cortado#internal#buffer#new()
+	End
+
+	Describe #from_buffer
+		Before
+			%bwipeout!
+		End
+
+		It should remove import statements from the buffer if arg is true
+			edit! test/input/StaticImports.java
+
+			call trees.from_buffer('%', v:true)
+			let lines = buffers.lines_matching_patt('%', 1, 'import')
+			Assert Equal(len(lines), 0)
+		End
+
+		It should not remove import statements from the buffer if arg is false
+			edit! test/input/StaticImports.java
+
+			call trees.from_buffer()
+			let lines = buffers.lines_matching_patt('%', 1, 'import')
+			Assert True(len(lines) > 0)
+		End
+
+		It should correctly build an import tree from the statements in the buffer
+			edit! test/input/StaticImports.java
+
+			let tree = trees.from_buffer('%', v:true)
+			Assert True(test_utils#tree#has_node(tree, 'java.io.IOException'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.external.Interface'))
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+		End
+
+		It should correctly build an import tree from the statements in a provided buffer
+			edit test/input/StaticImports.java
+			vsp test/input/ImportStaticMethod.java
+
+			let tree = trees.from_buffer('test/input/StaticImports.java')
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.Util.staticMethod'))
+		End
+	End
+
+	Describe #merge_from_buffer
+		Before
+			%bwipeout!
+		End
+
+		It should merge import statements from the given buffer into an existing tree
+			edit test/input/StaticImports.java
+			vsp test/input/ImportStaticMethod.java
+
+			let tree = trees.from_buffer('test/input/StaticImports.java')
+			let tree = trees.merge_from_buffer(tree, 'test/input/ImportStaticMethod.java')
+
+			" should have nodes from both buffers
+			Assert True(test_utils#tree#has_node(tree, 'java.io.IOException'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.Util.staticMethod'))
+		End
+	End
+
+	Describe #from_statements
+		It should correctly build an import from the given statements
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+		End
+
+		It should correctly set metadata for static imports
+			let stmt = 'import static ca.example.vim.Util.staticMethod;'
+			let tree = trees.from_statements([stmt])
+
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.Util.staticMethod'))
+			let [_, meta] = test_utils#tree#meta_for_node(tree, 'ca.example.vim.Util.staticMethod')
+			Assert True(has_key(meta, 's'))
+			Assert True(meta.s)
+		End
+
+		It should correctly set metadata for non-static imports
+			let stmt = 'import java.util.List;'
+			let tree = trees.from_statements([stmt])
+
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			let [_, meta] = test_utils#tree#meta_for_node(tree, 'java.util.List')
+			Assert True(has_key(meta, 's'))
+			Assert False(meta.s)
+		End
+
+		It should create a tree with the correct internal structure
+			let stmt = 'import java.util.List;'
+			let tree = trees.from_statements([stmt])
+
+			" level 1
+			Assert True(has_key(tree, 'children'))
+			Assert True(has_key(tree, 'leaf'))
+			Assert False(len(tree.leaf))
+
+			" children at level 1
+			Assert Equal(len(tree.children), 1)
+			Assert True(has_key(tree.children, 'java'))
+
+			" level 2
+			Assert True(has_key(tree.children.java, 'children'))
+			Assert True(has_key(tree.children.java, 'leaf'))
+			Assert False(len(tree.children.java.leaf))
+
+			" children at level 2
+			Assert Equal(len(tree.children.java.children), 1)
+			Assert True(has_key(tree.children.java.children, 'util'))
+
+			" level 3
+			Assert True(has_key(tree.children.java.children.util, 'children'))
+			Assert True(has_key(tree.children.java.children.util, 'leaf'))
+			Assert Equal(len(tree.children.java.children.util.children), 0)
+
+			" leafs at level 3
+			Assert Equal(len(tree.children.java.children.util.leaf), 1)
+			Assert True(has_key(tree.children.java.children.util.leaf, 'List'))
+		End
+
+		It should filter whitespace properly
+			let stmt = '     import 	 java  . util.List   ; '
+			let tree = trees.from_statements([stmt])
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+		End
+
+		It should split compound statements
+			let stmt = 'import javax.servlet.FilterChain; import java.util.Collections;'
+			let tree = trees.from_statements([stmt])
+
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+		End
+
+		It should correctly insert wildcard imports
+			let stmt = 'import java.util.*;'
+			let tree = trees.from_statements([stmt])
+
+			Assert True(test_utils#tree#has_node(tree, 'java.util.*'))
+		End
+	End
+
+	Describe #merge_from_statements
+		It should correctly merge statements into an existing tree
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let tree = trees.merge_from_statements(tree, ['import ca.example.MyClass'])
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.MyClass'))
+		End
+	End
+
+	Describe #from_file
+		It should build a tree from the given file path
+			let tree = trees.from_file('test/input/ImportStaticMethod.java')
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.external.Interface'))
+		End
+	End
+
+	Describe #merge_from_file
+		It should merge imports from a file path into an existing tree
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let tree = trees.merge_from_file(tree, 'test/input/ImportStaticMethod.java')
+
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.external.Interface'))
+		End
+	End
+
+	Describe #new
+		It should build an empty tree with correct structure
+			let tree = trees.new()
+			Assert True(has_key(tree, 'children'))
+			Assert False(len(tree.children))
+			Assert True(has_key(tree, 'leaf'))
+			Assert False(len(tree.leaf))
+		End
+	End
+
+	Describe #merge
+		Before
+			%bwipeout!
+		End
+
+		It should insert a fully-qualified entity into the tree
+			edit! test/input/Simple.java
+
+			let tree = trees.from_buffer(v:false)
+			call trees.merge(tree, ['com', 'example', 'vim', 'thing'])
+
+			Assert True(test_utils#tree#has_node(tree, 'com.example.vim.thing'))
+		End
+
+		It should create the tree node with the given metadata
+			edit! test/input/Simple.java
+
+			let tree = trees.from_buffer(v:false)
+			call trees.merge(tree, ['com', 'example', 'vim', 'thing'], { 'my-metadata': v:true })
+
+			Assert True(test_utils#tree#has_node(tree, 'com.example.vim.thing'))
+			let [_, meta] = test_utils#tree#meta_for_node(tree, 'com.example.vim.thing')
+			
+			Assert True(has_key(meta, 'my-metadata'))
+			Assert Equals(meta['my-metadata'], v:true)
+		End
+	End
+
+	Describe #merge_trees
+		It should merge two trees into a single tree
+			let tree_a = trees.from_file('test/input/StaticImports.java')
+			let tree_b = trees.from_file('test/input/StaticImports.java')
+			
+			let tree = trees.merge_trees(tree_a, tree_b)
+
+			Assert True(test_utils#tree#has_node(tree, 'java.io.IOException'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.external.Interface'))
+			Assert True(test_utils#tree#has_node(tree, 'javax.servlet.FilterChain'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.Util.staticMethod'))
+		End
+	End
+
+	Describe #flatten
+		Before
+			%bwipeout!
+		End
+
+		It should flatten a simple tree to a list of unique identifiers
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let result = trees.flatten(tree)
+			
+			Assert Equals(len(result), 3)
+			Assert True(index(result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(result, 'java.util.Collections') >= 0)
+			Assert True(index(result, 'java.util.List') >= 0)
+		End
+
+		It should prepend the prefix to each returned value
+			let tree = trees.from_statements(['import javax.servlet.FilterChain;'])
+			let result = trees.flatten(tree, { 'prefix': '$' })
+			
+			Assert Equals(len(result), 1)
+			Assert True(index(result, '$javax.servlet.FilterChain') >= 0)
+		End
+
+		It should append the postfix to each returned value
+			let tree = trees.from_statements(['import javax.servlet.FilterChain;'])
+			let result = trees.flatten(tree, { 'postfix': '$' })
+			
+			Assert Equals(len(result), 1)
+			Assert True(index(result, 'javax.servlet.FilterChain$') >= 0)
+		End
+
+		It should correctly filter static nodes
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import static java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			" with static filter
+			let tree = trees.from_statements(statements)
+			let result = trees.flatten(tree, { 'filter': { 's': v:true } })
+			
+			Assert Equals(len(result), 1)
+			Assert True(index(result, 'java.util.Collections') >= 0)
+
+			" now with non-static
+			let result = trees.flatten(tree, { 'filter': { 's': v:false } })
+			
+			Assert Equals(len(result), 2)
+			Assert True(index(result, 'java.util.List') >= 0)
+			Assert True(index(result, 'javax.servlet.FilterChain') >= 0)
+		End
+
+		It should use the provided initial list if configured
+			let initial = ['test123']
+			let tree = trees.from_statements(['import javax.servlet.FilterChain;'])
+			let result = trees.flatten(tree, { 'initial': initial })
+			
+			Assert Equals(len(result), 2)
+			Assert True(index(result, 'javax.servlet.FilterChain') >= 0)
+			Assert True(index(result, initial[0]) >= 0)
+		End
+
+		It should throw if options has an unexpected key
+			let tree = trees.from_statements([])
+			Throws /not a supported option/ trees.flatten(tree, { '_path': [] })
+		End
+
+		It should filter with the given predicate respecting static filter
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import static java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let result = trees.flatten(tree, {
+				\ 'filter': {
+					\ 's': v:false,
+					\ 'f': { path, meta -> path == ['java', 'util', 'Collections'] }
+				\ }
+			\ })
+			
+			Assert True(empty(result))
+		End
+
+		It should remove filtered nodes if configured
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import static java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let result = trees.flatten(tree, {
+				\ 'filter': {
+					\ 'f': { path, meta -> path == ['java', 'util', 'Collections'] },
+					\ 'r': v:true
+				\ }
+			\ })
+			
+			Assert Equals(len(result), 1)
+			Assert True(index(result, 'java.util.Collections') >= 0)
+			Assert False(test_utils#tree#has_node(tree, 'java.util.Collections'))
+		End
+	End
+
+	Describe #index
+		It should flatten tree into a dictionary keyed by leaf name
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let indexed_tree = trees.index(tree)
+
+			Assert True(has_key(indexed_tree, 'FilterChain'))
+			Assert Equals(len(indexed_tree['FilterChain']), 1)
+			Assert Equals(indexed_tree['FilterChain'][0]['fq_name'], ['javax', 'servlet', 'FilterChain'])
+
+			Assert True(has_key(indexed_tree, 'Collections'))
+			Assert Equals(len(indexed_tree['Collections']), 1)
+			Assert Equals(indexed_tree['Collections'][0]['fq_name'], ['java', 'util', 'Collections'])
+
+			Assert True(has_key(indexed_tree, 'List'))
+			Assert Equals(len(indexed_tree['List']), 1)
+			Assert Equals(indexed_tree['List'][0]['fq_name'], ['java', 'util', 'List'])
+		End
+
+		It should combine entries with matching leaf name
+			let statements = [
+					\ 'import java.util.Collections;',
+					\ 'import org.library.Collections;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+			let indexed_tree = trees.index(tree)
+
+			Assert True(has_key(indexed_tree, 'Collections'))
+			Assert Equals(len(indexed_tree['Collections']), 2)
+			Assert Equals(indexed_tree['Collections'][0]['fq_name'], ['org', 'library', 'Collections'])
+			Assert Equals(indexed_tree['Collections'][1]['fq_name'], ['java', 'util', 'Collections'])
+		End
+	End
+
+	Describe #visit_children
+		It should invoke callback for every child node in the tree
+			let statements = [
+				\ 'import javax.servlet.FilterChain;',
+				\ 'import java.util.Collections;',
+				\ 'import java.util.List;'
+			\ ]
+
+			let tree = trees.from_statements(statements)
+
+			let visited_nodes = []
+			call trees.visit_children(tree,
+				\ { name, meta, path, result -> add(result, path) }, visited_nodes)
+
+			Assert Equals(len(visited_nodes), 3)
+			Assert Equals(visited_nodes[0], ['javax', 'servlet', 'FilterChain'])
+			Assert Equals(visited_nodes[1], ['java', 'util', 'List'])
+			Assert Equals(visited_nodes[2], ['java', 'util', 'Collections'])
+		End
+	End
+
+	Describe #visit_parents
+		It should invoke callback for every parent node in the tree
+			let statements = [
+				\ 'import javax.servlet.FilterChain;',
+				\ 'import java.util.Collections;',
+				\ 'import java.util.List;'
+			\ ]
+
+			let tree = trees.from_statements(statements)
+
+			let visited_nodes = []
+			call trees.visit_parents(tree,
+				\ { node, path, result -> add(result, path) }, visited_nodes)
+
+			Assert Equals(len(visited_nodes), 4)
+			Assert Equals(visited_nodes[0], ['javax'])
+			Assert Equals(visited_nodes[1], ['javax', 'servlet'])
+			Assert Equals(visited_nodes[2], ['java'])
+			Assert Equals(visited_nodes[3], ['java', 'util'])
+		End
+	End
+
+	Describe #remove
+		It should not remove nodes that do not exist in tree
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+
+			let removed = trees.remove(tree, ['java', 'util', 'Collection'])
+			Assert False(removed)
+
+			let removed = trees.remove(tree, ['java', 'util', 'List', 'Deeper'])
+			Assert False(removed)
+		End
+
+		It should correctly remove node from the tree
+			let statements = [
+					\ 'import javax.servlet.FilterChain;',
+					\ 'import java.util.Collections;',
+					\ 'import java.util.List;',
+					\ 'import java.util.List.Deeper;'
+				\ ]
+
+			let tree = trees.from_statements(statements)
+
+			let removed = trees.remove(tree, ['java', 'util', 'List'])
+			Assert True(removed)
+			Assert False(test_utils#tree#has_node(tree, 'java.util.List'))
+			Assert True(test_utils#tree#has_node(tree, 'java.util.List.Deeper'))
+		End
+	End
+End
+

@@ -1,0 +1,53 @@
+Describe cortado#internal#fs
+	Before
+		let fs = cortado#internal#fs#new()
+	End
+
+	Describe #walk_dir
+		Before
+			let saved_wildignore = &wildignore
+		End
+
+		After
+			let &wildignore = saved_wildignore
+		End
+
+		It should find files in directory
+			let found = []
+			call fs.walk_dir('test/input/fs-walkdir-test',
+				\ { path -> add(found, path) })
+
+			Assert Equals(len(found), 3)
+			Assert True(index(found, 'test/input/fs-walkdir-test/child1/ignored') >= 0)
+			Assert True(index(found, 'test/input/fs-walkdir-test/child1/1') >= 0)
+			Assert True(index(found, 'test/input/fs-walkdir-test/2') >= 0)
+		End
+
+		It should skip anything listed in wildignore
+			set wildignore+=**/ignored
+
+			let found = []
+			call fs.walk_dir('test/input/fs-walkdir-test',
+				\ { path -> add(found, path) })
+
+			Assert Equals(len(found), 2)
+			Assert True(index(found, 'test/input/fs-walkdir-test/child1/1') >= 0)
+			Assert True(index(found, 'test/input/fs-walkdir-test/2') >= 0)
+		End
+	End
+
+	Describe #pretty_path
+		It should show full path if fits within max length
+			let path = 'test/input/fs-walkdir-test/child1/1'
+
+			Assert Equals(fs.pretty_path(path, 100), path)
+		End
+
+		It should truncate if does not fit in max length
+			let path = 'test/input/fs-walkdir-test/child1/1'
+
+			Assert Equals(fs.pretty_path(path, 20), 'test/input/fs-wa...1')
+		End
+	End
+End
+

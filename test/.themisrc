@@ -2,7 +2,7 @@ filetype on
 
 let s:assert = themis#helper('assert')
 call themis#option('recursive', 1)
-call themis#option('reporter', 'dot')
+call themis#option('reporter', 'spec')
 call themis#helper('command').with(s:assert)
 
 call themis#log('-----------------------------------------------------------')

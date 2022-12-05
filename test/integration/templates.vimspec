@@ -1,10 +1,10 @@
-Describe Templates
+Describe cortado#internal#template#var
 	After
 		%bwipeout!
-		let g:java_insert_var_declare_final = 1
+		let g:cortado_insert_var_declare_final = 1
 	End
 
-	Describe #InsertLocalVariable
+	Describe #insert
 		It should insert a final var declaration on the cursor line
 			edit! test/input/InsertVariable.java
 
@@ -14,21 +14,21 @@ Describe Templates
 			" sanity check
 			Assert Equals(getline(line('.')), '        prepareHeader(copy(), value)')
 
-			call java_support#templates#InsertLocalVariable()
+			call cortado#internal#template#var#insert()
 
 			" check the inserted text
 			Assert Equals(getline(line('.')), '        final var  = prepareHeader(copy(), value)')
 
 			" check the cursor position
-			let l:pos = getpos('.')
-			Assert Equals(l:pos[1], 4)
-			Assert Equals(l:pos[2], 19)
+			let pos = getpos('.')
+			Assert Equals(pos[1], 4)
+			Assert Equals(pos[2], 19)
 		End
 
 		It should insert a non-final var declaration on the cursor line if configured accordingly
 			edit! test/input/InsertVariable.java
 
-			let g:java_insert_var_declare_final = 0
+			let g:cortado_insert_var_declare_final = 0
 
 			" position the cursor to the middle of line 4
 			call cursor(4, 27)
@@ -36,15 +36,15 @@ Describe Templates
 			" sanity check
 			Assert Equals(getline(line('.')), '        prepareHeader(copy(), value)')
 
-			call java_support#templates#InsertLocalVariable()
+			call cortado#internal#template#var#insert()
 
 			" check the inserted text
 			Assert Equals(getline(line('.')), '        var  = prepareHeader(copy(), value)')
 
 			" check the cursor position
-			let l:pos = getpos('.')
-			Assert Equals(l:pos[1], 4)
-			Assert Equals(l:pos[2], 13)
+			let pos = getpos('.')
+			Assert Equals(pos[1], 4)
+			Assert Equals(pos[2], 13)
 		End
 	End
 End
