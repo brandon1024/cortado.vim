@@ -1,0 +1,49 @@
+Describe cortado#internal#util
+	Before
+		let utils = cortado#internal#util#new()
+	End
+
+	Describe #flatten
+		It should flatten up to maxdepth
+			let result = utils.flatten([[1,[2,3,4],5],[6,7,[[[8]]]]], 3)
+			Assert Equals(len(result), 8)
+
+			" flattened ones
+			for i in range(7)
+				Assert Equals(result[i], i + 1)
+			endfor
+
+			" last one is too nested
+			Assert Equals(result[7], [8])
+		End
+
+		It should flatten entire list if no maxdepth given
+			let result = utils.flatten([[1,[2,3,4],5],[6,7,[[[8]]]]])
+			Assert Equals(len(result), 8)
+			
+			for i in range(8)
+				Assert Equals(result[i], i + 1)
+			endfor
+		End
+	End
+
+	Describe #reduce
+		It should reduce values using the first value as the intial value if not provided
+			let result = utils.reduce([1, 3, 5], { acc, val -> acc + val })
+			Assert Equals(result, 9)
+		End
+
+		It should reduce values using the initial value if provided
+			let result = utils.reduce(['x', 'y'], { acc, val -> acc .. val }, 'a')
+			Assert Equals(l:result, 'axy')
+		End
+
+		It should throw error if list is empty and no initial value provided
+			Throws /^bug/ utils.reduce([], { acc, val -> acc + val })
+		End
+
+		It should throw error if too many arguments are given
+			Throws /^bug/ utils.reduce(['x', 'y'], { acc, val -> acc .. val }, 'a', 'b')
+		End
+	End
+End

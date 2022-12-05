@@ -1,31 +1,32 @@
-*java-support.txt*                                 Easier editing of Java files.
+*cortado.txt*                                      Easier editing of Java files.
 
 Author:  Brandon Richardson <brandon1024.br@gmail.com>
 License: MIT license
 
 ================================================================================
-CONTENTS                                                 *java-support-contents*
+CONTENTS                                                      *cortado-contents*
 
-INTRODUCTION                                         |java-support-introduction|
-  FEATURES                                               |java-support-features|
-USAGE                                                       |java-support-usage|
-  COMMANDS                                               |java-support-commands|
-OPTIONS                                                   |java-support-options|
-  SORT OPTIONS                                       |java-support-sort-options|
-  IMPORT OPTIONS                                   |java-support-import-options|
-  INDEX OPTIONS                                     |java-support-index-options|
-  MISC OPTIONS                                       |java-support-misc-options|
-MAPPINGS                                                 |java-support-mappings|
-  CREATING CUSTOM MAPPINGS               |java-support-creating-custom-mappings|
-EXTRA                                                       |java-support-extra|
-  LIMITATIONS                                         |java-support-limitations|
-  UNIVERSAL CTAGS                                 |java-support-universal-ctags|
-  REPORTING ISSUES                               |java-support-reporting-issues|
-  INTERNAL DATA STRUCTURES               |java-support-internal-data-structures|
+INTRODUCTION                                              |cortado-introduction|
+  FEATURES                                                    |cortado-features|
+USAGE                                                            |cortado-usage|
+  COMMANDS                                                    |cortado-commands|
+MAPPINGS                                                      |cortado-mappings|
+  PLUGIN MAPPINGS                                      |cortado-plugin-mappings|
+  CREATING CUSTOM MAPPINGS                    |cortado-creating-custom-mappings|
+OPTIONS                                                        |cortado-options|
+  SORT OPTIONS                                            |cortado-sort-options|
+  IMPORT OPTIONS                                        |cortado-import-options|
+  INDEX OPTIONS                                          |cortado-index-options|
+  MISC OPTIONS                                            |cortado-misc-options|
+EXTRA                                                            |cortado-extra|
+  LIMITATIONS                                              |cortado-limitations|
+  UNIVERSAL CTAGS                                      |cortado-universal-ctags|
+  REPORTING ISSUES                                    |cortado-reporting-issues|
+  INTERNAL DATA STRUCTURES                    |cortado-internal-data-structures|
 
 
 ================================================================================
-INTRODUCTION                                         *java-support-introduction*
+INTRODUCTION                                              *cortado-introduction*
 
 Java is a notoriously difficult language to work with in Vim, likely because
 fantastic purpose-built development tools (like IntelliJ and Gradle) already
@@ -34,9 +35,9 @@ editing and development tasks, especially with a bit of practice, but it's
 missing a few niceties that come standard in a full-fledged integrated
 development environment.
 
-java-support is a Vim plugin to make working on Java projects with Vim a
-bit easier. The plugin mainly helps you with imports (auto import,
-reformatting, optimizing), but more features are planned.
+Cortado is a Vim plugin to make working on Java projects with Vim a bit easier.
+The plugin mainly helps you with imports (auto import, reformatting,
+optimizing), but more features are planned.
 
 The plugin itself does not have any external dependencies, and aims to leverage
 native capabilities of Vim. The plugin is also very lightweight compared to
@@ -44,12 +45,12 @@ other solutions out there. You don't need to setup a complicated language
 server and install a million plugins to get it working--it just works out of
 the box.
 
-java-support is unobtrusive. To avoid overriding built-in or user-defined
-mappings, the plugin doesn't create any key mappings. You are left to create
-mappings that best suit your workflow.
+Cortado is unobtrusive. To avoid overriding built-in or user-defined mappings,
+the plugin doesn't create any key mappings. You are left to create mappings
+that best suit your workflow.
 
 --------------------------------------------------------------------------------
-FEATURES                                                 *java-support-features*
+FEATURES                                                      *cortado-features*
 
 Sort/Reformat Import Statements~
 	Automatically sort your import statements. Group import statements by
@@ -67,49 +68,50 @@ Class/Interface/Enum/Method Import~
 Introduce Local Variable Declaration~
 	Insert a local variable declaration under the cursor.
 
+
 ================================================================================
-USAGE                                                       |java-support-usage|
+USAGE                                                            |cortado-usage|
 
 To cleanup import statements:
 >
-	:Java cleanup-imports
+	:Cortado imports sort
 <
 
 To import a class or enum with a specific name:
 >
-	:Java import MyClass
+	:Cortado imports add MyClass
 <
 
 To import a class or enum with a name under the cursor:
 >
-	:Java import
+	:Cortado imports add
 <
 
 To re-index (cache) references from imports in the current project (cwd):
 >
-	:Java index
+	:Cortado index
 <
 
 To insert a local variable declaration under the current line:
 >
-	:Java insert-var
+	:Cortado insert-var
 <
 
 --------------------------------------------------------------------------------
-COMMANDS                                                 *java-support-commands*
+COMMANDS                                                      *cortado-commands*
 
-                                                                         *:Java*
-:Java cleanup-imports
+                                                                      *:Cortado*
+:Cortado imports sort
 	Clean up import statements in the current buffer. Import statements are
 	removed, optimized, sorted, and then written to the buffer just below the
 	package statement (if exists).
 
-:Java import [{name}]
+:Cortado imports add [{name}]
 	Import a class and cleanup the imports.
 
-	Search tag files for classes and enums with a specific {name}. If {name} is
-	given, searches for classes with that name. If {name} is omitted, searches
-	for classes with a name under the cursor (<cword>).
+	Look up for classes and enums with a specific {name}. If {name} is given,
+	searches for classes with that name. If {name} is omitted, searches for
+	classes with a name under the cursor (<cword>).
 
 	If there are multiple results, a popup menu is shown allowing the user to
 	select which class to import. With the popup visible, you can use j/<Down>
@@ -119,7 +121,7 @@ COMMANDS                                                 *java-support-commands*
 	If there's nothing under the cursor (<cword> expands to ''), the import
 	statements are sorted (equivalent to running 'cleanup-imports').
 
-:Java index [{subcommand} [{arg}]]
+:Cortado index [{subcommand} [{arg}]]
 	Manipulate the index. Indexing will help offer better import suggestions by
 	offering classes that have been imported elsewhere in a project. The index
 	is not created automatically at startup; you'll need to plumb that
@@ -138,14 +140,14 @@ COMMANDS                                                 *java-support-commands*
 	respected.
 
 	If {subcommand} is 'save', the index is written to the file
-	|g:java_import_index_path|.
+	|g:cortado_import_index_path|.
 
 	If {subcommand} is 'recover', the index is read from the file
-	|g:java_import_index_path| and merged into the index.
+	|g:cortado_import_index_path| and merged into the index.
 
 	If {subcommand} is 'clear', the index is cleared.
 
-:Java insert-var
+:Cortado insert-var
 	Insert a local variable declaration and assignment at the beginning of the
 	line, placing the cursor at the variable name. This will insert 'final var
 	= ' at the beginning of the line.
@@ -155,13 +157,65 @@ COMMANDS                                                 *java-support-commands*
 	knowledge of any types. This is merely a convenience feature for Java 11+
 	sources, leveraging type inference features ('var' keyword).
 
+
 ================================================================================
-OPTIONS                                                   *java-support-options*
+MAPPINGS                                                      *cortado-mappings*
 
 --------------------------------------------------------------------------------
-SORT OPTIONS                                         *java-support-sort-options*
+PLUGIN MAPPINGS                                        *cortado-plugin-mappings*
 
-                                                         *'g:java_import_order'*
+This plugin doesn't define mappings that override built-in or user-defined
+mappings. Instead, the plugin exposes a handful of <Plug> mappings for common
+features to help customize your own mappings. You can disable these mappings
+by setting |g:cortado_plug_mappings_disable|.
+
+*<Plug>(cortado-imports:add)*
+	Import a class, interface, or enum under the cursor and cleanup the imports.
+
+*<Plug>(cortado-imports:sort)*
+	Sort import statements in the current buffer.
+
+*<Plug>(cortado-index:dir)*
+	Index the project, starting from the current working directory, merging
+	into the existing index.
+
+*<Plug>(cortado-index:buffer)*
+	Index the current buffer, merging into the existing index.
+
+*<Plug>(cortado-index:save)*
+	Save the index to |g:cortado_import_index_path|.
+
+*<Plug>(cortado-index:recover)*
+	Recover the index from |g:cortado_import_index_path|.
+
+*<Plug>(cortado-index:clear)*
+	Reset the index.
+
+--------------------------------------------------------------------------------
+CREATING CUSTOM MAPPINGS                      *cortado-creating-custom-mappings*
+
+Key mappings are not created by default, but you can add them if you wish. Here
+are some mappings that I use:
+>
+	nmap <silent> <buffer> <C-i>      <Plug>(cortado-imports:add)
+	nmap <silent> <buffer> <F6>       <Plug>(cortado-imports:sort)
+	nmap <silent> <buffer> <leader>jc <Plug>(cortado-index:dir)
+	nmap <silent> <buffer> <F5>       <Plug>(cortado-templates:var)
+	imap <silent> <buffer> <F5>       <Plug>(cortado-templates:var)
+<
+
+The possibilities don't end there. If you are feeling bold, you could
+sort imports on a BufWritePre event to clean up imports before saving, or
+configure indexing to run automatically at startup (on VimEnter event).
+
+
+================================================================================
+OPTIONS                                                        *cortado-options*
+
+--------------------------------------------------------------------------------
+SORT OPTIONS                                              *cortado-sort-options*
+
+                                                      *'g:cortado_import_order'*
 A list of dictionaries used to configure how import statements are grouped.
 
 If "static" is true, only static imports are included in the group. Otherwise,
@@ -172,21 +226,21 @@ path. If empty, all remaining imports are grouped together.
 
 Default:
 >
-	let g:java_import_order = [
+	let g:cortado_import_order = [
 		\ { 'static': 1, 'packages': [] },
 		\ { 'static': 0, 'packages': ['java.', 'javax.'] },
 		\ { 'static': 0, 'packages': [] }]
 <
 
-                                                   *'g:java_import_space_group'*
+                                                *'g:cortado_import_space_group'*
 Insert an empty line between import groups.
 
 Default:
 >
-	let g:java_import_space_group = 1
+	let g:cortado_import_space_group = 1
 <
 
-                                                *'g:java_import_wildcard_count'*
+                                             *'g:cortado_import_wildcard_count'*
 Configure whether to merge import statements into a single wildcard import. The
 value is a number, where:
 - (< 0) will remove wildcard import statements altogether (may require
@@ -207,7 +261,7 @@ The following contrived example demonstrates this behaviour.
 	import java.util.Collections;
 	import java.util.*;
 
-	// let g:java_import_wildcard_count = -1
+	// let g:cortado_import_wildcard_count = -1
 	import java.io.IOException;
 	import java.io.ObjectInputFilter.Status;
 	import java.io.SSLException;
@@ -215,7 +269,7 @@ The following contrived example demonstrates this behaviour.
 	import java.util.Collections;
 	import java.util.List;
 
-	// let g:java_import_wildcard_count = 0
+	// let g:cortado_import_wildcard_count = 0
 	import java.io.IOException;
 	import java.io.ObjectInputFilter.Status;
 	import java.io.SSLException;
@@ -224,7 +278,7 @@ The following contrived example demonstrates this behaviour.
 	import java.util.Collections;
 	import java.util.List;
 
-	// let g:java_import_wildcard_count = 3
+	// let g:cortado_import_wildcard_count = 3
 	import java.io.*;
 	import java.io.ObjectInputFilter.Status;
 	import java.util.Collections;
@@ -233,21 +287,21 @@ The following contrived example demonstrates this behaviour.
 
 Default:
 >
-	let g:java_import_wildcard_count = 0
+	let g:cortado_import_wildcard_count = 0
 <
 
-                                           *'g:java_import_filter_same_package'*
+                                        *'g:cortado_import_filter_same_package'*
 Filter imports that are in the same package as the current file.
 
 Default:
 >
-	let g:java_import_filter_same_package = 1
+	let g:cortado_import_filter_same_package = 1
 <
 
 --------------------------------------------------------------------------------
-IMPORT OPTIONS                                     *java-support-import-options*
+IMPORT OPTIONS                                          *cortado-import-options*
 
-                                             *'g:java_import_popup_show_always'*
+                                          *'g:cortado_import_popup_show_always'*
 Configure when to show the popup when importing classes. By default, the popup
 is always shown when there are 1 or more results. If this option is set to zero,
 if there's only a single import result, that class will be automatically
@@ -255,67 +309,58 @@ imported without showing a popup.
 
 Default:
 >
-	let g:java_import_popup_show_always = 1
+	let g:cortado_import_popup_show_always = 1
 <
 
 --------------------------------------------------------------------------------
-INDEX OPTIONS                                       *java-support-index-options*
+INDEX OPTIONS                                            *cortado-index-options*
 
-                                                *'g:java_import_index_progress'*
-Enable or disable progress information when indexing. When enabled, a popup is
-shown in the bottom right corner to show which files are being indexed.
+                                                 *'g:cortado_progress_disabled'*
+Enable or disable the display of progress information in a popup when some task
+is running. When enabled, a popup is shown in the bottom right corner to show
+which files are being indexed.
 
 Default:
 >
-	let g:java_import_index_progress = 1
+	let g:cortado_progress_disabled = 0
 <
 
-                                                    *'g:java_import_index_path'*
+                                                 *'g:cortado_import_index_path'*
 When not empty, the index is written to a file in this directory and may be used
-to load the index through |:JavaImportIndexRecover|. If empty, the index is not
+to load the index through |:Cortado| index recover. If empty, the index is not
 saved and must be recreated in each new session.
 
 Default:
 >
-	let g:java_import_index_path = $HOME . '.cache/java-support/.idx'
+	let g:cortado_import_index_path = $HOME . '.cache/cortado/.idx'
 <
 
 --------------------------------------------------------------------------------
-MISC OPTIONS                                         *java-support-misc-options*
+MISC OPTIONS                                              *cortado-misc-options*
 
-                                             *'g:java_insert_var_declare_final'*
+                                          *'g:cortado_insert_var_declare_final'*
 When inserting local variable declarations, configure whether to create variable
 as 'final'.
 
 Default:
 >
-	let g:java_insert_var_declare_final = 1
+	let g:cortado_insert_var_declare_final = 1
 <
 
-================================================================================
-MAPPINGS                                                 *java-support-mappings*
+                                             *'g:cortado_plug_mappings_disable'*
+Disable plugin mappings.
 
---------------------------------------------------------------------------------
-CREATING CUSTOM MAPPINGS                 *java-support-creating-custom-mappings*
-
-Key mappings are not created by default, but you can add them if you wish. Here
-are some mappings that I use:
+Default:
 >
-	nnoremap <silent> <C-i> :Java import<CR>
-	nnoremap <silent> <leader>jc :Java index<CR>
-	nnoremap <silent> <F5> :Java insert-var<CR>
-	inoremap <silent> <F5> <C-o>:Java insert-var<CR>
+	let g:cortado_plug_mappings_disable = 0
 <
 
-The possibilities don't end there. If you are feeling bold, you could
-sort imports on a BufWritePre event to clean up imports before saving, or
-configure indexing to run automatically at startup (on VimEnter event).
 
 ================================================================================
-EXTRA                                                       *java-support-extra*
+EXTRA                                                            *cortado-extra*
 
 --------------------------------------------------------------------------------
-LIMITATIONS                                           *java-support-limitations*
+LIMITATIONS                                                *cortado-limitations*
 
 Unsupported Platforms~
 	This plugin is only tested in a handful of environments, notably Ubuntu
@@ -342,10 +387,10 @@ Dependence on ctags~
 	This plugin relies heavily on tag files. If you aren't using ctags (or
 	you're using a particularly dumb tag file generator), not all features will
 	work. If you aren't using |universal-ctags|, you should.. It's amazing.
-	See |java-support-universal-ctags|.
+	See |cortado-universal-ctags|.
 
 --------------------------------------------------------------------------------
-UNIVERSAL CTAGS                                   *java-support-universal-ctags*
+UNIVERSAL CTAGS                                        *cortado-universal-ctags*
 
 This plugin uses tag files to locate classes and build fully-qualified class
 names. Without it, import features will be limited. If you haven't worked
@@ -389,17 +434,17 @@ mention it here anyway.
 https://github.com/brandon1024/gtags
 
 --------------------------------------------------------------------------------
-REPORTING ISSUES                                 *java-support-reporting-issues*
+REPORTING ISSUES                                      *cortado-reporting-issues*
 
 If you run into issues, please file an issue on our github page! Be sure to
 include lots of detail (a minimal reproducible example is required). I also
-accept patches and contributions of any form! If you like the plugin, star the
-repo :-)
+accept patches and contributions of any form! If you like the plugin, help me
+out by starring the repo :-)
 
-https://github.com/brandon1024/java-support.vim
+https://github.com/brandon1024/cortado.vim
 
 --------------------------------------------------------------------------------
-INTERNAL DATA STRUCTURES                 *java-support-internal-data-structures*
+INTERNAL DATA STRUCTURES                      *cortado-internal-data-structures*
 
 If you're planning to contribute to the project, it might be handy to know a
 bit about how import statements are represented internally in this plugin.
@@ -476,5 +521,5 @@ The following example shows the index for a single import
 	}
 <
 
-=============================================================================
+================================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

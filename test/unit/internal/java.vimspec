@@ -1,0 +1,155 @@
+Describe cortado#internal#java
+	Before
+		let java = cortado#internal#java#new()
+	End
+
+	Describe #is_valid_identifier
+		It should return false is empty string provided
+			Assert False(java.is_valid_identifier(''))
+		End
+
+		It should return false if does not match valid identifier
+			let invalid = [
+				\ '.thing',
+				\ '1thing',
+				\ 'thing@',
+				\ 'th@ing',
+				\ 'th ing'
+				\ ]
+
+			for ident in invalid
+				Assert False(java.is_valid_identifier(ident), 'failed for ' . ident)
+			endfor
+		End
+
+		It should return true if does match valid identifier
+			let invalid = [
+				\ '$thing',
+				\ '_thing',
+				\ 'thing1',
+				\ 'Thing1',
+				\ 'T',
+				\ 'T$1_'
+				\ ]
+
+			for ident in invalid
+				Assert True(java.is_valid_identifier(ident), 'failed for ' . ident)
+			endfor
+		End
+	End
+
+	Describe #normalize_import_statements
+		It should trim writespace correctly
+			let stmts = '      import java.util.Collections;	
+			\	import    	 ca.example.vim.internal.ImportedClass; '
+
+			let result = java.normalize_import_statements(stmts)
+			Assert Equals(len(result), 2)
+
+			let first = result[0]
+			Assert Equals(len(first[0]), 3)
+			Assert Equals(first[0][0], 'java')
+			Assert Equals(first[0][1], 'util')
+			Assert Equals(first[0][2], 'Collections')
+
+			let second = result[1]
+			Assert Equals(len(second[0]), 5)
+			Assert Equals(second[0][0], 'ca')
+			Assert Equals(second[0][1], 'example')
+			Assert Equals(second[0][2], 'vim')
+			Assert Equals(second[0][3], 'internal')
+			Assert Equals(second[0][4], 'ImportedClass')
+		End
+
+		It should normalize non-static import statements into its components
+			let stmts = 'import java.util.Collections;'
+
+			let result = java.normalize_import_statements(stmts)
+			Assert Equals(len(result), 1)
+
+			let first = result[0]
+			let components = first[0]
+			Assert Equals(len(components), 3)
+			Assert Equals(components[0], 'java')
+			Assert Equals(components[1], 'util')
+			Assert Equals(components[2], 'Collections')
+
+			let meta = first[1]
+			Assert Equals(meta['s'], v:false)
+		End
+
+		It should normalize static import statements into its components
+			let stmts = 'import static java.util.Collections;'
+
+			let result = java.normalize_import_statements(stmts)
+			Assert Equals(len(result), 1)
+
+			let first = result[0]
+			let components = first[0]
+			Assert Equals(len(components), 3)
+			Assert Equals(components[0], 'java')
+			Assert Equals(components[1], 'util')
+			Assert Equals(components[2], 'Collections')
+
+			let meta = first[1]
+			Assert Equals(meta['s'], v:true)
+		End
+	End
+
+	Describe #get_package
+		Before
+			%bwipeout!
+		End
+
+		It should correctly find package statement
+			edit! test/input/Simple.java
+
+			let result = java.get_package()
+			Assert Equals(len(result), 3)
+			Assert Equals(result[0], 'ca')
+			Assert Equals(result[1], 'example')
+			Assert Equals(result[2], 'vim')
+		End
+
+		It should correctly skip over leading lines
+			edit! test/input/PackageStatementTest.java
+
+			let result = java.get_package()
+			Assert Equals(len(result), 3)
+			Assert Equals(result[0], 'ca')
+			Assert Equals(result[1], 'example')
+			Assert Equals(result[2], 'vim')
+		End
+
+		It should return empty list if package statement is missing
+			edit! test/input/InsertVariable.java
+
+			let result = java.get_package()
+			Assert True(empty(result))
+		End
+	End
+
+	Describe #get_package
+		It should correctly find package statement
+			let result = java.get_package_for_file('test/input/Simple.java')
+			Assert Equals(len(result), 3)
+			Assert Equals(result[0], 'ca')
+			Assert Equals(result[1], 'example')
+			Assert Equals(result[2], 'vim')
+		End
+
+		It should correctly skip over leading lines
+			let result = java.get_package_for_file('test/input/PackageStatementTest.java')
+			Assert Equals(len(result), 3)
+			Assert Equals(result[0], 'ca')
+			Assert Equals(result[1], 'example')
+			Assert Equals(result[2], 'vim')
+		End
+
+		It should return empty list if package statement is missing
+			let result = java.get_package_for_file('test/input/InsertVariable.java')
+			Assert True(empty(result))
+		End
+	End
+End
+
