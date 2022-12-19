@@ -27,6 +27,10 @@ NestedClasses	NestedClasses.java	/^    public NestedClasses() {}$/;"	m	class:Nes
 NestedClasses	NestedClasses.java	/^public class NestedClasses {$/;"	c
 NestedEnums	NestedEnums.java	/^public class NestedEnums {$/;"	c
 NestedInterfaces	NestedInterfaces.java	/^public class NestedInterfaces {$/;"	c
+OptimizeIgnoreWildcard	OptimizeIgnoreWildcard.java	/^    public OptimizeIgnoreWildcard(ImportedClass c, Interface i) {$/;"	m	class:OptimizeIgnoreWildcard
+OptimizeIgnoreWildcard	OptimizeIgnoreWildcard.java	/^public class OptimizeIgnoreWildcard {$/;"	c
+OptimizeImports	OptimizeImports.java	/^    public OptimizeImports(ImportedClass c, Interface i) {}$/;"	m	class:OptimizeImports
+OptimizeImports	OptimizeImports.java	/^public class OptimizeImports {$/;"	c
 PackageStatementTest	PackageStatementTest.java	/^public class PackageStatementTest {}$/;"	c
 Simple	Simple.java	/^    public Simple(ImportedClass c, Interface i) {}$/;"	m	class:Simple
 Simple	Simple.java	/^public class Simple {$/;"	c
@@ -34,6 +38,7 @@ SimpleAnnotation	SimpleAnnotation.java	/^    public SimpleAnnotation(ImportedCla
 SimpleAnnotation	SimpleAnnotation.java	/^public @interface SimpleAnnotation {$/;"	a
 SimpleEnum	SimpleEnum.java	/^public enum SimpleEnum {$/;"	g
 SimpleInterface	SimpleInterface.java	/^public interface SimpleInterface {$/;"	i
+SortFilterSamePackage	SortFilterSamePackage.java	/^public class SortFilterSamePackage {$/;"	c
 StaticImports	StaticImports.java	/^    public StaticImports(ImportedClass c, Interface i) {}$/;"	m	class:StaticImports
 StaticImports	StaticImports.java	/^public class StaticImports {$/;"	c
 StaticInnerClass	NestedClasses.java	/^        public StaticInnerClass() {}$/;"	m	class:NestedClasses.StaticInnerClass
@@ -49,11 +54,14 @@ ca.example.vim	NestedAnnotations.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	NestedClasses.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	NestedEnums.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	NestedInterfaces.java	/^package ca.example.vim;$/;"	p
+ca.example.vim	OptimizeIgnoreWildcard.java	/^package ca.example.vim;$/;"	p
+ca.example.vim	OptimizeImports.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	PackageStatementTest.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	Simple.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	SimpleAnnotation.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	SimpleEnum.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	SimpleInterface.java	/^package ca.example.vim;$/;"	p
+ca.example.vim	SortFilterSamePackage.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	StaticImports.java	/^package ca.example.vim;$/;"	p
 ca.example.vim	Wildcard.java	/^package ca.example.vim;$/;"	p
 getSimpleInterface	SimpleInterface.java	/^	void getSimpleInterface(ImportedClass val1, Interface val2);$/;"	m	interface:SimpleInterface

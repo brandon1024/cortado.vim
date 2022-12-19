@@ -1,0 +1,45 @@
+Describe  cortado#internal#import#sort
+	After
+		%bwipeout!
+	End
+
+	Describe #sort
+		It should correctly flatten and sort import statements from the tree
+			let trees = cortado#internal#import#tree#new()
+			let sorting = cortado#internal#import#sort#new()
+
+			let tree = trees.from_file('test/input/OptimizeImports.java')
+			let statements = sorting.sort(tree)
+
+			" check that tree hasn't been modified
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.external.Interface'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.test.Unused'))
+
+			Assert Equals(len(statements), 5)
+			Assert Equals(statements[0], '')
+			Assert Equals(statements[1], 'import ca.example.vim.external.Interface;')
+			Assert Equals(statements[2], 'import ca.example.vim.internal.ImportedClass;')
+			Assert Equals(statements[3], 'import ca.example.vim.test.Unused;')
+			Assert Equals(statements[4], '')
+		End
+
+		It should filter imports in the same package as the current buffer
+			let buffers = cortado#internal#buffer#new()
+			let trees = cortado#internal#import#tree#new()
+			let optimizer = cortado#internal#import#optimize#new()
+			let sorting = cortado#internal#import#sort#new()
+
+			edit! test/input/SortFilterSamePackage.java
+
+			let tree = trees.from_buffer('%')
+			let statements = sorting.sort(tree)
+
+			Assert Equals(len(statements), 4)
+			Assert Equals(statements[0], '')
+			Assert Equals(statements[1], 'import ca.example.vim.external.NotFiltered;')
+			Assert Equals(statements[2], 'import ca.example.vim.internal.NotFiltered;')
+			Assert Equals(statements[3], '')
+		End
+	End
+End

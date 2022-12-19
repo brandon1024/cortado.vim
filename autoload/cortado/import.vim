@@ -38,22 +38,60 @@ function! cortado#import#keyword(keyword = '') abort
 	call s:import_from_selection(l:keyword, l:import_tag_results)
 endfunction
 
-" Sort import statements in the current buffer.
+" Sort imports, then find and highlight unused imports in the current buffer.
 function! cortado#import#sort() abort
 	let l:trees = cortado#internal#import#tree#new()
-	let l:sorting = cortado#internal#import#sort#new()
-	let l:optimizer = cortado#internal#import#optimize#new()
 	let l:utils = cortado#internal#util#new()
 
 	if &filetype != 'java'
-		return l:utils.warn('cannot sort imports: unexpected filetype "' . &filetype . '"')
+		return l:utils.warn('cannot optimize imports: unexpected filetype "' . &filetype . '"')
 	endif
 
 	let l:tree = l:trees.from_buffer('%', v:true)
-	let l:tree = l:optimizer.wildcards(l:tree)
+	call s:optimize(l:tree, v:true, v:false)
+endfunction
+
+" Sort imports, then find and remove unused imports in the current buffer.
+function! cortado#import#optimize() abort
+	let l:trees = cortado#internal#import#tree#new()
+	let l:utils = cortado#internal#util#new()
+
+	if &filetype != 'java'
+		return l:utils.warn('cannot optimize imports: unexpected filetype "' . &filetype . '"')
+	endif
+
+	let l:tree = l:trees.from_buffer('%', v:true)
+	call s:optimize(l:tree, v:false, v:true)
+endfunction
+
+" Sort and optimize import statements.
+"
+" If `highlight_unused` is true, unused import statements are highlighted.
+" If `remove` is true, unused imports are removed altogether.
+function! s:optimize(tree, highlight_unused = v:false, remove = v:false) abort
+	let l:trees = cortado#internal#import#tree#new()
+	let l:optimizer = cortado#internal#import#optimize#new()
+	let l:sorting = cortado#internal#import#sort#new()
+	let l:text_props = cortado#internal#tprop#new()
+	let l:buffers = cortado#internal#buffer#new()
+
+	let l:tree = l:optimizer.wildcards(a:tree)
+	let l:unused = l:optimizer.find_unused(l:tree, '%', a:remove)
 	let l:statements = l:sorting.sort(l:tree)
 
 	call l:sorting.write(l:statements)
+
+	" apply text properties
+	function! s:tree_node_visitor(name, meta, path, acc) abort closure
+		let l:lnum = l:buffers.lnum_matching_patt('%', 1, a:name)
+		if l:lnum
+			call l:text_props.insert_shaded('%', l:lnum)
+		endif
+	endfunction
+
+	if a:highlight_unused
+		call l:trees.visit_children(l:unused, function('s:tree_node_visitor'))
+	endif
 endfunction
 
 " Build popup entry strings for the given `tag_results`. `mode` is used to
@@ -112,10 +150,8 @@ function! s:import_class(tag_result) abort
 
 	let l:tree = l:trees.from_buffer('%', v:true)
 	let l:tree = l:trees.merge(l:tree, a:tag_result.fq_name, { 's': a:tag_result.s })
-	let l:tree = l:optimizer.wildcards(l:tree)
-	let l:statements = l:sorting.sort(l:tree)
 
-	call l:sorting.write(l:statements)
+	call s:optimize(l:tree, v:true, v:false)
 endfunction
 
 " Fetch import suggestion results from tags and from the index (if enabled).

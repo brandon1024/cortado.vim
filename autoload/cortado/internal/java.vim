@@ -112,10 +112,14 @@ function! s:get_package_pattern() abort
 	return 'package\s\+\([^;]\+\);'
 endfunction
 
+" Return a pattern that can be used to match package statements.
+function! s:get_import_pattern() abort
+	return '^import\s\+\(static\)\?\(.*\)$'
+endfunction
+
 " Normalize a single import statement.
 function! s:normalize_import_statement(stmt) abort
-	let l:matches = matchlist(a:stmt,
-		\ '^import\s\+\(static\)\?\(.*\)$')
+	let l:matches = matchlist(a:stmt, s:get_import_pattern())
 	if len(l:matches) < 3
 		return []
 	endif

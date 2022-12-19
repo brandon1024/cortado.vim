@@ -9,10 +9,14 @@ function! cortado#internal#import#sort#new() abort
 endfunction
 
 " Flatten and sort `tree` into a flat list of import statements according
-" to `g:cortado_import_order`. `tree` is mutated.
-function! s:sort(tree) abort
+" to `g:cortado_import_order`.
+function! s:sort(original) abort
+	let l:trees = cortado#internal#import#tree#new()
 	let l:java = cortado#internal#java#new()
 	let l:utils = cortado#internal#util#new()
+
+	" make a copy of the tree
+	let l:tree = l:trees.merge_trees(l:trees.new(), a:original)
 
 	let l:package = l:java.get_package()
 
@@ -24,7 +28,7 @@ function! s:sort(tree) abort
 		let l:group = g:cortado_import_order[idx]
 
 		if !empty(get(l:group, 'packages', []))
-			let l:imports[idx] = s:new_group(a:tree, l:package, l:group)
+			let l:imports[idx] = s:new_group(l:tree, l:package, l:group)
 		endif
 	endfor
 
@@ -33,14 +37,14 @@ function! s:sort(tree) abort
 		let l:group = g:cortado_import_order[idx]
 
 		if empty(get(l:group, 'packages', []))
-			let l:imports[idx] = s:new_group(a:tree, l:package, l:group)
+			let l:imports[idx] = s:new_group(l:tree, l:package, l:group)
 		endif
 	endfor
 
 	" third pass, any remaining that don't fit in a group
-	call add(l:imports, s:new_group(a:tree, l:package,
+	call add(l:imports, s:new_group(l:tree, l:package,
 		\ { 'static': v:true, 'packages': [] }))
-	call add(l:imports, s:new_group(a:tree, l:package,
+	call add(l:imports, s:new_group(l:tree, l:package,
 		\ { 'static': v:false, 'packages': [] }))
 
 	return l:utils.flatten(l:imports)
