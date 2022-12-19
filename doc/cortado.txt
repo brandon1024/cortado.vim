@@ -17,6 +17,7 @@ OPTIONS                                                        |cortado-options|
   SORT OPTIONS                                            |cortado-sort-options|
   IMPORT OPTIONS                                        |cortado-import-options|
   INDEX OPTIONS                                          |cortado-index-options|
+  CHECKSTYLE OPTIONS                                |cortado-checkstyle-options|
   MISC OPTIONS                                            |cortado-misc-options|
 EXTRA                                                            |cortado-extra|
   LIMITATIONS                                              |cortado-limitations|
@@ -37,7 +38,7 @@ development environment.
 
 Cortado is a Vim plugin to make working on Java projects with Vim a bit easier.
 The plugin mainly helps you with imports (auto import, reformatting,
-optimizing), but more features are planned.
+optimizing), running checkstyle, code generation, and more!
 
 The plugin itself does not have any external dependencies, and aims to leverage
 native capabilities of Vim. The plugin is also very lightweight compared to
@@ -67,6 +68,9 @@ Class/Interface/Enum/Method Import~
 
 Introduce Local Variable Declaration~
 	Insert a local variable declaration under the cursor.
+
+Run Checkstyle~
+	Run Checkstyle static code analysis and populate the quickfix list.
 
 
 ================================================================================
@@ -100,6 +104,11 @@ To re-index (cache) references from imports in the current project (cwd):
 To insert a local variable declaration under the current line:
 >
 	:Cortado insert-var
+<
+
+To run checkstyle:
+>
+	:Cortado checkstyle
 <
 
 --------------------------------------------------------------------------------
@@ -171,6 +180,16 @@ COMMANDS                                                      *cortado-commands*
 	knowledge of any types. This is merely a convenience feature for Java 11+
 	sources, leveraging type inference features ('var' keyword).
 
+:Cortado checkstyle [{path}]
+	Run checkstyle and populate the quickfix list.
+
+	Without any {path}, checkstyle is run from the current working directory.
+
+	If {path} is '%', run checkstyle on the current file. Otherwise, {path} is
+	interpreted as a file or directory path.
+
+	The |g:cortado_checkstyle_lib_path| option must be configured correctly.
+
 
 ================================================================================
 MAPPINGS                                                      *cortado-mappings*
@@ -209,6 +228,12 @@ by setting |g:cortado_plug_mappings_disable|.
 
 *<Plug>(cortado-index:clear)*
 	Reset the index.
+
+*<Plug>(cortado-checkstyle:dir)*
+	Run checkstyle, starting from the current working directory.
+
+*<Plug>(cortado-checkstyle:buffer)*
+	Run checkstyle on the current buffer.
 
 --------------------------------------------------------------------------------
 CREATING CUSTOM MAPPINGS                      *cortado-creating-custom-mappings*
@@ -352,6 +377,27 @@ saved and must be recreated in each new session.
 Default:
 >
 	let g:cortado_import_index_path = $HOME . '.cache/cortado/.idx'
+<
+
+--------------------------------------------------------------------------------
+CHECKSTYLE OPTIONS                                  *cortado-checkstyle-options*
+
+                                               *'g:cortado_checkstyle_lib_path'*
+Path to the Checkstyle library (jar). Must be configured to use Checkstyle
+features.
+
+Default:
+>
+	let g:cortado_checkstyle_lib_path = v:null
+<
+
+                                            *'g:cortado_checkstyle_config_file'*
+Path to the Checkstyle config file. Relative paths are relative to the current
+working directory.
+
+Default:
+>
+	let g:cortado_checkstyle_config_file = './checkstyle.xml'
 <
 
 --------------------------------------------------------------------------------

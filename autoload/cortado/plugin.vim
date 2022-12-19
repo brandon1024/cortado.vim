@@ -86,6 +86,7 @@ function! s:build_cmd_tree()
 		\ 	'clear': { args -> cortado#index#clear() },
 		\ },
 		\ 'insert-var': { args -> cortado#internal#template#var#insert() },
+		\ 'checkstyle': { args -> cortado#checkstyle#run(get(args, 0, '.')) }
 	\ }
 endfunction
 

@@ -42,13 +42,15 @@ endfunction
 
 " Show a completion message and close the progress popup after a 1 second
 " delay.
-function! s:complete(popup_id, message) abort
+function! s:complete(popup_id, message = '') abort
 	if g:cortado_progress_disabled || a:popup_id == v:null
 		return
 	endif
 
-	call popup_settext(a:popup_id, ' ' . a:message . ' ')
-	redraw
+	if !empty(a:message)
+		call popup_settext(a:popup_id, ' ' . a:message . ' ')
+		redraw
+	endif
 
 	function! s:close_popup(timer_id) abort closure
 		call popup_close(a:popup_id)

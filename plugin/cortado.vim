@@ -57,6 +57,17 @@ if !exists('g:cortado_plug_mappings_disable')
 	let g:cortado_plug_mappings_disable = 0
 endif
 
+" By default, don't make any assumptions to where the checkstyle jar is
+" installed.
+if !exists('g:cortado_checkstyle_lib_path')
+	let g:cortado_checkstyle_lib_path = v:null
+endif
+
+" By default, assume checkstyle config file is in the cwd.
+if !exists('g:cortado_checkstyle_config_file')
+	let g:cortado_checkstyle_config_file = './checkstyle.xml'
+endif
+
 command! -nargs=* -complete=customlist,cortado#plugin#command_completion Cortado
 	\ call cortado#plugin#command(<f-args>)
 
