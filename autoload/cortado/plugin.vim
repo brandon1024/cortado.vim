@@ -74,7 +74,8 @@ function! s:build_cmd_tree()
 	return {
 		\ 'imports': {
 		\ 	'add': { args -> cortado#import#keyword(get(args, 0, '')) },
-		\ 	'sort': { args -> cortado#import#sort() }
+		\ 	'sort': { args -> cortado#import#sort() },
+		\ 	'optimize': { args -> cortado#import#optimize() },
 		\ },
 		\ 'index': {
 		\ 	'': { args -> cortado#index#buffer() },
@@ -84,7 +85,7 @@ function! s:build_cmd_tree()
 		\ 	'recover': { args -> cortado#index#recover() },
 		\ 	'clear': { args -> cortado#index#clear() },
 		\ },
-		\ 'insert-var': { args -> cortado#internal#template#var#insert() }
+		\ 'insert-var': { args -> cortado#internal#template#var#insert() },
 	\ }
 endfunction
 

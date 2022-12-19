@@ -1,12 +1,14 @@
 Describe cortado#import
+	Before
+		let buffers = cortado#internal#buffer#new()
+	End
+
 	After
 		%bwipeout!
 	End
 
 	Describe #import
 		It should sort imports if no classname provided and no keyword under cursor
-			let buffers = cortado#internal#buffer#new()
-
 			edit! test/input/Simple.java
 
 			" position the cursor at the end of the file so that <cword> expands
@@ -22,6 +24,230 @@ Describe cortado#import
 			Assert Equals(len(import_lines), 2)
 
 			" should have sorted
+			Assert Equals(import_lines[0], 'import ca.example.vim.external.Interface;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
+		End
+	End
+
+	Describe #sort
+		After
+			let g:cortado_import_wildcard_count = 0
+			let g:cortado_import_filter_same_package = 1
+		End
+
+		It should not run in buffers without the 'java' filetype
+			enew!
+			read test/input/Simple.java
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 2)
+
+			" should not have sorted
+			Assert Equals(import_lines[0], 'import ca.example.vim.internal.ImportedClass;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.external.Interface;')
+		End
+
+		It should run in buffers with the 'java' filetype
+			edit! test/input/Simple.java
+
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 2)
+
+			" should have sorted
+			Assert Equals(import_lines[0], 'import ca.example.vim.external.Interface;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
+		End
+
+		It should filter duplicate imports
+			edit! test/input/DuplicateImports1.java
+
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, 'ca\.example\.vim\.internal\.ImportedClass')
+			Assert Equals(len(import_lines), 1)
+		End
+
+		It should group imports according to default configuration
+			edit! test/input/StaticImports.java
+
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+
+			" first should be static imports
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import static')
+			Assert True(icount > 0, 'no static imports found')
+
+			" Then the java. ones
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import java\.')
+			Assert True(icount > 0, 'no java. imports found')
+
+			" Then the javax ones
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import javax\.')
+			Assert True(icount > 0, 'no javax. imports found')
+
+			" then any remaining
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import ca\.')
+			Assert True(icount > 0, 'no ca. imports found')
+		End
+
+		It should insert import statements after package statement
+			edit! test/input/Simple.java
+
+			call cortado#import#sort()
+
+			let lines = buffers.lines_matching_patt('%', 1, '^import\|^package')
+			Assert Equals(len(lines), 3)
+
+			Assert Equals(lines[0], 'package ca.example.vim;')
+			Assert Equals(lines[1], 'import ca.example.vim.external.Interface;')
+			Assert Equals(lines[2], 'import ca.example.vim.internal.ImportedClass;')
+		End
+
+		It should truncate leading blank lines
+			edit! test/input/StaticImports.java
+			0put =''
+
+			Assert True(match(getline(1), '^$') >= 0)
+
+			call cortado#import#sort()
+
+			Assert True(match(getline(1), '^package') >= 0)
+		End
+
+		It should insert empty line between groups if configured
+			edit! test/input/StaticImports.java
+
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import\|^$')
+
+			" single empty line
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^$')
+			Assert Equal(icount, 1, 'missing empty line')
+
+			" first should be static imports
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import static')
+			Assert True(icount > 0, 'no static imports found')
+
+			" single empty line
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^$')
+			Assert Equal(icount, 1, 'missing empty line')
+
+			" Then the java. ones
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import java\.')
+			Assert True(icount > 0, 'no java. imports found')
+
+			" Then the javax ones
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import javax\.')
+			Assert True(icount > 0, 'no javax. imports found')
+
+			" single empty line
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^$')
+			Assert Equal(icount, 1, 'missing empty line')
+
+			" then any remaining
+			let [icount, import_lines] = test_utils#lists#filter_while_matching(import_lines, '^import ca\.')
+			Assert True(icount > 0, 'no ca. imports found')
+		End
+
+		It should remove wildcard imports if configured to do so
+			let g:cortado_import_wildcard_count = -1
+
+			edit! test/input/Wildcard.java
+
+			call cortado#import#sort()
+
+			" ensure that wildcard import was removed
+			let idx = buffers.lnum_matching_patt('%', 1, '^import java\.util\.\*;')
+			Assert Equals(idx, 0)
+
+			" ensure other java.util imports were not removed
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import java\.util')
+			Assert Equals(len(import_lines), 3)
+		End
+
+		It should merge imports into existing wildcard imports if configured to do so
+			let g:cortado_import_wildcard_count = 0
+
+			edit! test/input/Wildcard.java
+
+			call cortado#import#sort()
+
+			" ensure that wildcard import was not removed
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import java\.util')
+			Assert Equals(len(import_lines), 1)
+		End
+
+		It should merge imports when number of imports in same package exceed configured value
+			let g:cortado_import_wildcard_count = 3
+
+			edit! test/input/Wildcard.java
+
+			call cortado#import#sort()
+
+			" ensure java util imports were merged
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import java\.util')
+			Assert Equals(len(import_lines), 1)
+
+			" ensure ca.example.vim imports were merged
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import ca\.example\.vim\.internal2\.\*')
+			Assert Equals(len(import_lines), 1)
+
+			" ensure ca.example.vim.internal imports were not merged
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import ca\.example\.vim\.internal\.')
+			Assert Equals(len(import_lines), 2)
+		End
+
+		It should not merge imports where a class name matches a component of a package for another import
+			edit! test/input/ImportClassPackageNameMatchBug.java
+
+			call cortado#import#sort()
+
+			" ensure imports were not collapsed into one
+			Assert True(buffers.lnum_matching_patt('%', 1, 'import ca.example.internal.vim.Internal;') > 0)
+			Assert True(buffers.lnum_matching_patt('%', 1, 'import ca.example.internal.vim.Internal.Interface;') > 0)
+		End
+
+		It should filter imports that are in the same package as the current file
+			edit! test/input/SortFilterSamePackage.java
+
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 2)
+
+			Assert Equals(import_lines[0], 'import ca.example.vim.external.NotFiltered;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.internal.NotFiltered;')
+		End
+
+		It should not filter imports that are in the same package as the current file if configured accordingly
+			edit! test/input/SortFilterSamePackage.java
+
+			let g:cortado_import_filter_same_package = 0
+			call cortado#import#sort()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 3)
+
+			Assert Equals(import_lines[0], 'import ca.example.vim.Filtered;')
+			Assert Equals(import_lines[1], 'import ca.example.vim.external.NotFiltered;')
+			Assert Equals(import_lines[2], 'import ca.example.vim.internal.NotFiltered;')
+		End
+	End
+
+	Describe #optimize
+		It should remove unused import statements from the buffer
+			edit! test/input/OptimizeImports.java
+
+			call cortado#import#optimize()
+
+			let import_lines = buffers.lines_matching_patt('%', 1, '^import')
+			Assert Equals(len(import_lines), 2)
+
 			Assert Equals(import_lines[0], 'import ca.example.vim.external.Interface;')
 			Assert Equals(import_lines[1], 'import ca.example.vim.internal.ImportedClass;')
 		End

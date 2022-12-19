@@ -5,10 +5,6 @@ Describe cortado#internal#import#optimize
 	End
 
 	Describe #wildcards
-		Before
-			%bwipeout!
-		End
-
 		After
 			let g:java_import_wildcard_count = 0
 		End
@@ -106,6 +102,57 @@ Describe cortado#internal#import#optimize
 			Assert True(test_utils#tree#has_node(tree, 'java.util.Collections'))
 			Assert True(test_utils#tree#has_node(tree, 'java.util.List'))
 			Assert False(test_utils#tree#has_node(tree, 'java.util.*'))
+		End
+	End
+
+	Describe #find_unused
+		Before
+			%bwipeout!
+		End
+
+		It should locate unused imports when import statements have been removed from buffer
+			edit! test/input/OptimizeImports.java
+
+			let tree = trees.from_buffer('%', v:true)
+			let unused = optimizer.find_unused(tree, '%')
+
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(unused, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert False(test_utils#tree#has_node(unused, 'ca.example.vim.internal.ImportedClass'))
+		End
+
+		It should locate unused imports when import statements have not been removed from buffer
+			edit! test/input/OptimizeImports.java
+
+			let tree = trees.from_buffer('%', v:false)
+			let unused = optimizer.find_unused(tree, '%')
+
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(unused, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert False(test_utils#tree#has_node(unused, 'ca.example.vim.internal.ImportedClass'))
+		End
+
+		It should remove entries from the source tree if configured
+			edit! test/input/OptimizeImports.java
+
+			let tree = trees.from_buffer('%', v:false)
+			let unused = optimizer.find_unused(tree, '%', v:true)
+
+			Assert False(test_utils#tree#has_node(tree, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(unused, 'ca.example.vim.test.Unused'))
+			Assert True(test_utils#tree#has_node(tree, 'ca.example.vim.internal.ImportedClass'))
+			Assert False(test_utils#tree#has_node(unused, 'ca.example.vim.internal.ImportedClass'))
+		End
+
+		It should ignore wildcard imports
+			edit! test/input/OptimizeIgnoreWildcard.java
+
+			let tree = trees.from_buffer('%', v:false)
+			let unused = optimizer.find_unused(tree, '%')
+
+			Assert False(test_utils#tree#has_node(unused, 'ca.example.vim.internal.*'))
 		End
 	End
 End

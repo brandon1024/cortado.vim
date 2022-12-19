@@ -1,12 +1,12 @@
 # cortado.vim ☕
 
-![vim.ci](https://img.shields.io/github/workflow/status/brandon1024/cortado.vim/vim.ci?branch=main)
+![vim.ci](https://img.shields.io/github/actions/workflow/status/brandon1024/cortado.vim/ci.yml?branch=main)
 [![Documentation](https://img.shields.io/badge/Documentation-cortado.txt-brightgreen)](https://github.com/brandon1024/cortado.vim/blob/main/doc/cortado.txt)
 
 Work on your favourite Java projects in Vim! No complicated language server
 setup required!
 
-Import classes by name, reformat import statemens, and many other goodies!
+Import classes by name, find unused import statemens, and many other goodies!
 
 ![](.github/screenshare-1.gif)
 ![](.github/screenshare-2.gif)
@@ -26,12 +26,6 @@ Plug 'brandon1024/cortado.vim'
 
 ## Usage
 
-To cleanup import statements:
-
-```vim
-	:Cortado imports sort
-```
-
 To import a class or enum with a specific name:
 
 ```vim
@@ -42,6 +36,18 @@ To import a class or enum with a name under the cursor:
 
 ```vim
 	:Cortado imports add
+```
+
+To cleanup import statements:
+
+```vim
+	:Cortado imports find-unused
+```
+
+To remove unused imports:
+
+```vim
+	:Cortado imports optimize
 ```
 
 To re-index (cache) references from imports in the current project (cwd):
@@ -68,7 +74,7 @@ are some mappings that I use:
 
 ```vim
 	nmap <silent> <buffer> <C-i>      <Plug>(cortado-imports:add)
-	nmap <silent> <buffer> <F6>       <Plug>(cortado-imports:sort)
+	nmap <silent> <buffer> <F6>       <Plug>(cortado-imports:find-unused)
 	nmap <silent> <buffer> <leader>jc <Plug>(cortado-index:dir)
 	nnoremap <silent> <buffer> <F5>   :Cortado insert-var<CR>
 	inoremap <silent> <buffer> <F5>   <C-o>:Cortado insert-var<CR>
