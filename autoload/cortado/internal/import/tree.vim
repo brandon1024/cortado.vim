@@ -188,7 +188,7 @@ function! s:flatten(tree, options = {}) abort
 	function! s:should_flatten(path, meta, filter) abort
 		for [k, VALUE] in items(a:filter)
 			" filter static / non-static
-			if k == 's' && a:meta['s'] != VALUE
+			if k == 's' && a:meta.s != VALUE
 				return v:false
 			endif
 
@@ -335,3 +335,4 @@ endfunction
 function! s:get_import_statement_patt() abort
 	return '^\s*import\s.\+;\s*$'
 endfunction
+

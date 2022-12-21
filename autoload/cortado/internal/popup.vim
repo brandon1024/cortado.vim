@@ -108,21 +108,21 @@ function! s:entry_table_add_row(table, columns) abort
 		call add(l:row, l:col_data)
 
 		" adjust column width
-		if index >= len(a:table['col_widths'])
-			call add(a:table['col_widths'], len(l:text))
+		if index >= len(a:table.col_widths)
+			call add(a:table.col_widths, len(l:text))
 		else
-			let a:table['col_widths'][index] = max([a:table['col_widths'][index], len(l:text)])
+			let a:table.col_widths[index] = max([a:table.col_widths[index], len(l:text)])
 		endif
 	endfor
 
-	call add(a:table['rows'], l:row)
+	call add(a:table.rows, l:row)
 endfunction
 
 " Build a list of popup entries (that can be passed to popup_settext()) from
 " an entry table.
 function! s:entry_table_build(table) abort
-	let l:rows = a:table['rows']
-	let l:col_widths = a:table['col_widths']
+	let l:rows = a:table.rows
+	let l:col_widths = a:table.col_widths
 
 	let l:results = []
 	for index in range(len(l:rows))
@@ -132,14 +132,14 @@ function! s:entry_table_build(table) abort
 		let l:props = []
 		for col_idx in range(len(l:columns))
 			let l:column = l:columns[col_idx]
-			let l:col_text = l:column['text']
+			let l:col_text = l:column.text
 			let l:col_width = l:col_widths[col_idx]
 
 			if has_key(l:column, 'prop')
 				call add(l:props, {
 					\ 'col': len(l:text) + 1,
 					\ 'length': len(l:col_text),
-					\ 'type': l:column['prop']
+					\ 'type': l:column.prop
 				\ })
 			endif
 

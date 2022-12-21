@@ -70,7 +70,7 @@ endfunction
 
 " Build a dictionary (tree) representing all available options. Leafs are
 " lambda functions executing the command.
-function! s:build_cmd_tree()
+function! s:build_cmd_tree() abort
 	return {
 		\ 'imports': {
 		\ 	'add': { args -> cortado#import#keyword(get(args, 0, '')) },
@@ -86,6 +86,19 @@ function! s:build_cmd_tree()
 		\ 	'clear': { args -> cortado#index#clear() },
 		\ },
 		\ 'insert-var': { args -> cortado#internal#template#var#insert() },
+		\ 'debug': {
+		\ 	'launch': { args -> cortado#debug#launch_session(args[0], args[1:-1]) },
+		\ 	'quit': { args -> cortado#debug#quit_session() },
+		\ 	'resume': { args -> cortado#debug#resume() },
+		\ 	'step-over': { args -> cortado#debug#step_over() },
+		\ 	'step-into': { args -> cortado#debug#step_into() },
+		\ 	'step-out': { args -> cortado#debug#step_out() },
+		\ 	'break': { args -> cortado#debug#break() },
+		\ 	'frames': { args -> cortado#debug#frames() },
+		\ 	'variables': { args -> cortado#debug#variables() },
+		\ 	'eval': { args -> cortado#debug#evaluate() },
+		\ 	'print': { args -> cortado#debug#print() },
+		\ }
 	\ }
 endfunction
 

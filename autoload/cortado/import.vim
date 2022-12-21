@@ -183,8 +183,8 @@ endfunction
 " - kind: everything else
 function! cortado#import#result_comparator(result1, result2) abort
 	let l:recognized_kinds = ['indexed', 'm', 'e', 'g', 'a', 'i', 'c']
-	let l:p1 = index(l:recognized_kinds, a:result1['type'])
-	let l:p2 = index(l:recognized_kinds, a:result2['type'])
+	let l:p1 = index(l:recognized_kinds, a:result1.type)
+	let l:p2 = index(l:recognized_kinds, a:result2.type)
 
 	return (l:p1 == l:p2) ? 0 : (l:p1 < l:p2 ? 1 : -1)
 endfunction

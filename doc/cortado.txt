@@ -17,6 +17,7 @@ OPTIONS                                                        |cortado-options|
   SORT OPTIONS                                            |cortado-sort-options|
   IMPORT OPTIONS                                        |cortado-import-options|
   INDEX OPTIONS                                          |cortado-index-options|
+  DEBUG OPTIONS                                          |cortado-debug-options|
   MISC OPTIONS                                            |cortado-misc-options|
 EXTRA                                                            |cortado-extra|
   LIMITATIONS                                              |cortado-limitations|
@@ -36,8 +37,8 @@ missing a few niceties that come standard in a full-fledged integrated
 development environment.
 
 Cortado is a Vim plugin to make working on Java projects with Vim a bit easier.
-The plugin mainly helps you with imports (auto import, reformatting,
-optimizing), but more features are planned.
+The plugin helps you with import statements (auto import, reformatting,
+optimizing), debugging JVM applications, and more!
 
 The plugin itself does not have any external dependencies, and aims to leverage
 native capabilities of Vim. The plugin is also very lightweight compared to
@@ -68,6 +69,8 @@ Class/Interface/Enum/Method Import~
 Introduce Local Variable Declaration~
 	Insert a local variable declaration under the cursor.
 
+Java Debugger (JDB) Support~
+	Easily attach to a running JVM, set breakpoints and step through code.
 
 ================================================================================
 USAGE                                                            |cortado-usage|
@@ -102,6 +105,11 @@ To insert a local variable declaration under the current line:
 	:Cortado insert-var
 <
 
+To attach to a running JVM:
+>
+	:Cortado debug attach localhost:8000 project/src/main/java
+<
+
 --------------------------------------------------------------------------------
 COMMANDS                                                      *cortado-commands*
 
@@ -128,7 +136,7 @@ COMMANDS                                                      *cortado-commands*
 
 	All unused import statements in the current buffer are highlighted.
 	This plugin is not intelligent enough to ignore matches in strings and
-	comments. It only performs a simple search in the buffer, which is often
+	comments. It only performs a simple search in the buffer, which is usually
 	good enough.
 
 :Cortado imports optimize
@@ -169,8 +177,43 @@ COMMANDS                                                      *cortado-commands*
 	This plugin does not know anything about the lexical structure of Java
 	source code. It knows nothing about your Java version, nor does it have any
 	knowledge of any types. This is merely a convenience feature for Java 11+
-	sources, leveraging type inference features ('var' keyword).
+	sources, leveraging type inference language features ('var' keyword).
 
+:Cortado debug {subcommand} [args...]
+	Interact with the java debugger (JDB). This feature is an abtraction over
+	JDB, and thus must be installed on the 'path'. When launching a new session,
+	a terminal window is shown with an interactive JDB prompt. You can run JDB
+	commands yourself or interact with JDB through some convenience subcommands
+	listed below or plugin mappings.
+
+	If {subcommand} is 'launch', start a new JDB session. The first argument is
+	the hostname and port of the remote JVM. The remaining arguments is a list
+	of paths to Java source files passed to JDB.
+
+	If {subcommand} is 'quit', terminates the JDB session.
+
+	If {subcommand} is 'resume', resume execution.
+
+	If {subcommand} is 'step-over', steps over the next instruction.
+
+	If {subcommand} is 'step-into', steps into a function call.
+
+	If {subcommand} is 'step-out', steps out of a function call.
+
+	If {subcommand} is 'break', toggles a breakpoint. The subcommand optionally
+	accepts an argument, the fully-qualified class name and line number for the
+	breakpoint (e.g. com.example.vim.MyClass:22). If no arguments are provided,
+	the breakpoint is set/unset on the current line.
+
+	If {subcommand} is 'frames', show the call stack of the current thread.
+
+	If {subcommand} is 'variables', show fields, method arguments and local
+	variables.
+
+	If {subcommand} is 'eval', prompts for an expression to evaluate.
+
+	If {subcommand} is 'print', print the value of a field, local variable or
+	method argument under the cursor.
 
 ================================================================================
 MAPPINGS                                                      *cortado-mappings*
@@ -210,6 +253,34 @@ by setting |g:cortado_plug_mappings_disable|.
 *<Plug>(cortado-index:clear)*
 	Reset the index.
 
+*<Plug>(cortado-debug:quit)*
+	Terminate the JDB session.
+
+*<Plug>(cortado-debug:resume)*
+	Continue execution.
+
+*<Plug>(cortado-debug:step-over)*
+	Step over the current instruction.
+
+*<Plug>(cortado-debug:step-into)*
+	Step into a method call.
+
+*<Plug>(cortado-debug:step-out)*
+	Step out of a method call.
+
+*<Plug>(cortado-debug:break)*
+	Toggle a breakpoint on the current line.
+
+*<Plug>(cortado-debug:frames)*
+	Show the call stack for the current thread.
+
+*<Plug>(cortado-debug:variables)*
+	Show fields, method arguments and local variables.
+
+*<Plug>(cortado-debug:print)*
+	Print the value of a field, local variable or method argument under the
+	cursor.
+
 --------------------------------------------------------------------------------
 CREATING CUSTOM MAPPINGS                      *cortado-creating-custom-mappings*
 
@@ -221,11 +292,13 @@ are some mappings that I use:
 	nmap <silent> <buffer> <leader>jc <Plug>(cortado-index:dir)
 	nmap <silent> <buffer> <F5>       <Plug>(cortado-templates:var)
 	imap <silent> <buffer> <F5>       <Plug>(cortado-templates:var)
-<
 
-The possibilities don't end there. If you are feeling bold, you could
-sort imports on a BufWritePre event to clean up imports before saving, or
-configure indexing to run automatically at startup (on VimEnter event).
+	nmap <silent> <buffer> <F7>       <Plug>(cortado-debug:resume)
+	nmap <silent> <buffer> <F8><F9>   <Plug>(cortado-debug:step-into)
+	nmap <silent> <buffer> <F8><F8>   <Plug>(cortado-debug:step-over)
+	nmap <silent> <buffer> <F8><F7>   <Plug>(cortado-debug:step-out)
+	nmap <silent> <buffer> <F9>       <Plug>(cortado-debug:break)
+<
 
 
 ================================================================================
@@ -241,7 +314,8 @@ If "static" is true, only static imports are included in the group. Otherwise,
 only non-static imports are included in the group.
 
 "packages" is a list of strings matching the beginning of the imported package
-path. If empty, all remaining imports are grouped together.
+path. If empty or undefined, all remaining (static, non-static) imports are
+grouped together.
 
 Default:
 >
@@ -352,6 +426,18 @@ saved and must be recreated in each new session.
 Default:
 >
 	let g:cortado_import_index_path = $HOME . '.cache/cortado/.idx'
+<
+
+--------------------------------------------------------------------------------
+DEBUG OPTIONS                                            *cortado-debug-options*
+
+                                               *'g:cortado_debug_close_on_exit'*
+When true, close the JDB session window when the JDB process terminates.
+Otherwise, the window is kept open after terminating.
+
+Default:
+>
+	let g:cortado_debug_close_on_exit = 0
 <
 
 --------------------------------------------------------------------------------

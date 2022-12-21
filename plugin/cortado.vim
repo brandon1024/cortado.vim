@@ -57,6 +57,11 @@ if !exists('g:cortado_plug_mappings_disable')
 	let g:cortado_plug_mappings_disable = 0
 endif
 
+" By default, close the debug window when jdb exits.
+if !exists('g:cortado_debug_close_on_exit')
+	let g:cortado_debug_close_on_exit = 0
+endif
+
 command! -nargs=* -complete=customlist,cortado#plugin#command_completion Cortado
 	\ call cortado#plugin#command(<f-args>)
 

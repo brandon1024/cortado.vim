@@ -26,13 +26,13 @@ function! s:lnum_matching_patt(buf, lnum, patt) abort
 
 	" older versions of vim don't have 'linecount'
 	if has_key(l:bufinfo, 'linecount')
-		let l:linecount = l:bufinfo['linecount']
+		let l:linecount = l:bufinfo.linecount
 	else
-		if empty(l:bufinfo['windows'])
+		if empty(l:bufinfo.windows)
 			return 0
 		endif
 
-		let l:linecount = line('$', l:bufinfo['windows'][0])
+		let l:linecount = line('$', l:bufinfo.windows[0])
 	endif
 
 	while l:idx > 0 && l:idx <= l:linecount
