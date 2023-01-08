@@ -39,19 +39,18 @@ function! s:launch_session(address, config) abort
 	let l:session_handle._dead = v:false
 	let l:session_handle._config = a:config
 
-	let l:term_opts = {
-		\ 'curwin': v:true,
+	let l:job_opts = {
+		\ 'in_mode': 'raw',
+		\ 'out_mode': 'nl',
+		\ 'err_mode': 'raw',
 		\ 'out_cb': function('s:on_stdout', [l:session_handle]),
+		\ 'err_cb': function('s:on_stderr', [l:session_handle]),
 		\ 'exit_cb': function('s:on_exit', [l:session_handle]),
 	\ }
 
-	if g:cortado_debug_close_on_exit
-		call extend(l:term_opts, { 'term_finish': 'close' })
-	endif
-
-	let l:session_handle._bufnr = term_start(['jdb',
+	let l:session_handle._job = job_start(['jdb',
 		\ '-sourcepath', join(l:utils.flatten(a:config.sources), ':'),
-		\ '-attach', a:address], l:term_opts)
+		\ '-attach', a:address], l:job_opts)
 
 	return l:session_handle
 endfunction
@@ -62,8 +61,7 @@ function! s:end_session(session_handle) abort
 		return
 	endif
 
-	let l:job = term_getjob(a:session_handle._bufnr)
-	call job_stop(l:job)
+	call job_stop(l:session_handle._job)
 
 	let a:session_handle._dead = v:true
 endfunction
@@ -74,7 +72,7 @@ function! s:send_continue(session_handle) abort
 		throw 'error: jdb debug session is dead'
 	endif
 
-	call term_sendkeys(a:session_handle._bufnr, "\<C-u>cont\<CR>")
+	call ch_sendraw(job_getchannel(a:session_handle._job), "cont")
 endfunction
 
 " Send a `print <expr>` to the JDB session.
@@ -83,7 +81,7 @@ function! s:send_print(session_handle, expr) abort
 		throw 'error: jdb debug session is dead'
 	endif
 
-	call term_sendkeys(a:session_handle._bufnr, "\<C-u>print " . a:expr . "\<CR>")
+	call term_sendkeys(a:session_handle._bufnr, "print " . a:expr . "")
 endfunction
 
 " Send a `dump <expr>` to the JDB session.
@@ -171,10 +169,15 @@ endfunction
 
 " Callback invoked when data is available on the job's stdout.
 function! s:on_stdout(session_handle, channel, message) abort
+	echomsg 'out: ' . a:message
 	let l:matches = matchlist(a:message, '[^,]*, \(.*\)\.\(.*()\), line=\(\d\+\)')
 	if !empty(l:matches)
 		call a:session_handle._config.on_stop_cb(l:matches[1], l:matches[3])
 	endif
+endfunction
+
+function! s:on_stderr(session_handle, channel, message) abort
+	echomsg 'err: ' . a:message
 endfunction
 
 " Callback invoked when the job exits.
